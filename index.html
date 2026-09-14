@@ -2,48 +2,83 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0d5c2f">
 <title>PG Docs Sign</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/SignDocs_icon.png">
+<link rel="apple-touch-icon" href="/SignDocs_icon.png">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1f2937; min-height: 100vh; }
-  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-  .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-  .card { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); width: 100%; max-width: 460px; }
-  .card h1 { font-size: 22px; margin-bottom: 6px; color: #0f172a; }
-  .card .subtitle { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+  :root {
+    --green-900:#064e3b; --green-700:#0d5c2f; --green-500:#10b981; --green-100:#d1fadf; --green-50:#f0fdf4;
+    --gold:#c9a227; --gold-light:#f7e08a;
+    --bg:#f6f9f6; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+    --red:#dc2626; --amber:#f59e0b; --blue:#2563eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 12px; }
+  /* Corporate header */
+  .header { background: linear-gradient(180deg, var(--green-100) 0%, var(--green-50) 100%); border-bottom: 3px solid var(--gold); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(13,92,47,0.06); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand img { width: 44px; height: 44px; border-radius: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-text .title { font-size: 18px; font-weight: 800; color: var(--green-900); letter-spacing: .3px; }
+  .brand-text .subtitle { font-size: 11px; color: var(--green-700); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .user-info { font-size: 13px; color: var(--green-900); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .user-info .name { font-weight: 600; }
+  /* Card */
+  .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(6,78,59,0.06); border: 1px solid rgba(13,92,47,0.08); }
+  .card h1 { font-size: 20px; margin-bottom: 6px; color: var(--green-900); }
+  .card .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .login-card { width: 100%; max-width: 440px; }
+  .login-header { text-align: center; margin-bottom: 20px; }
+  .login-header img { width: 80px; height: 80px; border-radius: 40px; box-shadow: 0 4px 16px rgba(13,92,47,0.2); margin-bottom: 12px; }
+  .login-header h1 { color: var(--green-900); font-size: 24px; font-weight: 800; letter-spacing: .5px; }
+  .login-header .tag { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  /* Form */
   .form-group { margin-bottom: 14px; }
-  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #374151; }
-  input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-  button, .btn { background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
-  button:hover { background: #1d4ed8; }
-  button.secondary { background: #e5e7eb; color: #1f2937; }
-  button.secondary:hover { background: #d1d5db; }
-  button.danger { background: #dc2626; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+  input, select, textarea { width: 100%; padding: 11px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; transition: all .15s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green-700); box-shadow: 0 0 0 3px rgba(13,92,47,0.1); }
+  button, .btn { background: var(--green-700); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  button:hover { background: var(--green-900); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(13,92,47,0.2); }
+  button.secondary { background: #f1f5f9; color: #334155; }
+  button.secondary:hover { background: #e2e8f0; box-shadow: none; }
+  button.danger { background: var(--red); }
   button.danger:hover { background: #b91c1c; }
-  button.success { background: #059669; }
-  button.success:hover { background: #047857; }
-  button:disabled { background: #9ca3af; cursor: not-allowed; }
-  .btn-full { width: 100%; }
-  .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
-  .msg.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-  .msg.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-  .msg.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-  .link { color: #2563eb; text-decoration: none; font-size: 13px; cursor: pointer; }
+  button.gold { background: linear-gradient(135deg, var(--gold) 0%, #a5811d 100%); }
+  button:disabled { background: #9ca3af; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-full { width: 100%; padding: 12px; font-size: 15px; }
+  .link { color: var(--green-700); text-decoration: none; font-size: 13px; cursor: pointer; font-weight: 600; }
   .link:hover { text-decoration: underline; }
-  .header { background: #fff; padding: 14px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; }
-  .header h1 { font-size: 18px; color: #0f172a; }
-  .header .user-info { font-size: 13px; color: #64748b; display: flex; gap: 12px; align-items: center; }
-  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px; overflow-x: auto; }
-  .tab { padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 14px; color: #64748b; white-space: nowrap; }
-  .tab.active { color: #2563eb; border-color: #2563eb; font-weight: 500; }
-  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  th, td { padding: 12px 14px; text-align: left; font-size: 14px; }
-  th { background: #f9fafb; color: #374151; font-weight: 600; font-size: 13px; }
+  .msg { padding: 11px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .msg.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .msg.success { background: #f0fdf4; color: #065f46; border: 1px solid #bbf7d0; }
+  .msg.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .msg.warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  /* KPI cards */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: var(--card); border-radius: 12px; padding: 16px; border-left: 4px solid var(--green-700); box-shadow: 0 2px 8px rgba(6,78,59,0.05); }
+  .kpi.gold { border-left-color: var(--gold); }
+  .kpi.red { border-left-color: var(--red); }
+  .kpi.blue { border-left-color: var(--blue); }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600; letter-spacing: .5px; }
+  .kpi .value { font-size: 26px; font-weight: 800; color: var(--green-900); margin-top: 4px; }
+  .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin-bottom: 16px; overflow-x: auto; background: #fff; border-radius: 10px 10px 0 0; padding: 0 8px; }
+  .tab { padding: 12px 18px; cursor: pointer; border-bottom: 3px solid transparent; font-size: 14px; color: var(--muted); white-space: nowrap; font-weight: 500; margin-bottom: -2px; }
+  .tab.active { color: var(--green-700); border-color: var(--green-700); font-weight: 700; }
+  .tab:hover:not(.active) { color: var(--green-900); background: var(--green-50); }
+  /* Table */
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(6,78,59,0.05); }
+  th, td { padding: 12px 14px; text-align: left; font-size: 14px; vertical-align: top; }
+  th { background: var(--green-900); color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
   tr { border-top: 1px solid #f1f5f9; }
-  tr:hover td { background: #fafbfc; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  tr:hover td { background: var(--green-50); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
   .badge.pending { background: #fef3c7; color: #92400e; }
   .badge.approved { background: #d1fae5; color: #065f46; }
   .badge.rejected { background: #fee2e2; color: #991b1b; }
@@ -51,45 +86,93 @@
   .badge.high { background: #ffedd5; color: #9a3412; }
   .badge.normal { background: #dbeafe; color: #1e40af; }
   .badge.low { background: #f3f4f6; color: #374151; }
+  .age-badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .age-badge.fresh { background: #d1fadf; color: #065f46; }
+  .age-badge.warm { background: #fef3c7; color: #92400e; }
+  .age-badge.hot { background: #fed7aa; color: #9a3412; }
+  .age-badge.critical { background: #fecaca; color: #991b1b; }
   .actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .actions button { padding: 6px 12px; font-size: 12px; }
   .empty { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
-  .box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
-  .box h3 { font-size: 16px; margin-bottom: 12px; color: #0f172a; }
+  .box { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(6,78,59,0.06); border: 1px solid rgba(13,92,47,0.08); margin-bottom: 20px; }
+  .box h3 { font-size: 16px; margin-bottom: 12px; color: var(--green-900); display: flex; align-items: center; gap: 8px; }
+  .box h3::before { content: ''; width: 4px; height: 18px; background: var(--gold); border-radius: 2px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .file-drop { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 24px; text-align: center; color: #64748b; cursor: pointer; }
-  .file-drop:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
-  .file-drop.has-file { border-color: #059669; color: #065f46; background: #f0fdf4; }
-  #fileInput { display: none; }
+  .file-drop { border: 2px dashed var(--green-500); border-radius: 10px; padding: 20px; text-align: center; color: var(--green-700); cursor: pointer; background: var(--green-50); font-weight: 600; }
+  .file-drop:hover { background: var(--green-100); border-color: var(--green-700); }
+  .file-drop.has-file { border-style: solid; }
+  .file-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .file-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
+  .file-item .rm { color: var(--red); cursor: pointer; font-weight: 700; }
+  #fileInput, #cameraInput { display: none; }
   textarea { min-height: 60px; resize: vertical; }
+  .upload-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-bottom: 12px; }
+  .upload-note strong { color: #78350f; }
+  .upload-buttons { display: flex; gap: 8px; margin-top: 6px; }
+  .upload-buttons button { flex: 1; padding: 10px; font-size: 13px; }
+  /* Folder groups */
+  .folder-group { background: var(--card); border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--border); overflow: hidden; }
+  .folder-head { padding: 12px 16px; background: var(--green-50); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .folder-head:hover { background: var(--green-100); }
+  .folder-head .name { font-weight: 700; color: var(--green-900); font-size: 14px; }
+  .folder-head .count { background: var(--green-700); color: #fff; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .folder-body { display: none; padding: 0; }
+  .folder-group.open .folder-body { display: block; }
+  .folder-group.open .folder-head { border-bottom: 1px solid var(--border); }
   /* Signing modal */
-  .modal { position: fixed; inset: 0; background: rgba(15,23,42,.85); z-index: 1000; display: flex; }
+  .modal { position: fixed; inset: 0; background: rgba(6,78,59,.9); z-index: 1000; display: flex; }
   .modal-doc { flex: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  .modal-side { width: 320px; background: #fff; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-  .modal-side h3 { font-size: 14px; color: #0f172a; margin: 0; }
-  .modal-close { position: absolute; top: 12px; right: 12px; background: #fff; border: none; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; font-size: 18px; z-index: 1001; }
+  .modal-side { width: 340px; background: #fff; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .modal-side h3 { font-size: 14px; color: var(--green-900); margin: 0; }
+  .modal-close { position: absolute; top: 12px; right: 12px; background: #fff; border: none; width: 34px; height: 34px; border-radius: 17px; cursor: pointer; font-size: 20px; z-index: 1001; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
   .pdf-page { position: relative; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
   .pdf-page canvas { display: block; }
-  .sig-overlay { position: absolute; border: 2px dashed #2563eb; cursor: move; background: rgba(37,99,235,.03); user-select: none; touch-action: none; }
+  .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
-  .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: #1e40af; white-space: nowrap; }
-  .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: #dc2626; border: 3px solid #dc2626; border-radius: 6px; }
-  .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 16px; height: 16px; background: #2563eb; border-radius: 8px; cursor: nwse-resize; }
-  .sig-overlay .remove-handle { position: absolute; left: -8px; top: -8px; width: 20px; height: 20px; background: #dc2626; color: #fff; border-radius: 10px; text-align: center; line-height: 20px; cursor: pointer; font-size: 12px; }
-  .draw-canvas { border: 1px solid #d1d5db; border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
-  .tool-tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 10px; }
-  .tool-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 12px; border-bottom: 2px solid transparent; }
-  .tool-tab.active { color: #2563eb; border-color: #2563eb; }
+  .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
+  .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: var(--red); border: 3px solid var(--red); border-radius: 6px; }
+  .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px; background: var(--green-700); border-radius: 9px; cursor: nwse-resize; }
+  .sig-overlay .remove-handle { position: absolute; left: -8px; top: -8px; width: 22px; height: 22px; background: var(--red); color: #fff; border-radius: 11px; text-align: center; line-height: 22px; cursor: pointer; font-size: 13px; }
+  .draw-canvas { border: 1px solid var(--border); border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
+  .tool-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+  .tool-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 12px; border-bottom: 2px solid transparent; font-weight: 600; color: var(--muted); }
+  .tool-tab.active { color: var(--green-700); border-color: var(--green-700); }
   .saved-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .saved-sig { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; position: relative; }
-  .saved-sig:hover { border-color: #2563eb; }
+  .saved-sig { border: 1px solid var(--border); border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; position: relative; background: #fff; }
+  .saved-sig:hover { border-color: var(--green-700); }
   .saved-sig img { max-width: 100%; max-height: 40px; }
-  .saved-sig .del { position: absolute; top: 2px; right: 4px; color: #dc2626; font-size: 11px; cursor: pointer; }
+  .saved-sig .del { position: absolute; top: 2px; right: 4px; color: var(--red); font-size: 11px; cursor: pointer; font-weight: 700; }
+  /* Chart */
+  .chart-box { background: var(--card); border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); margin-bottom: 20px; }
+  .chart-box h3 { font-size: 14px; color: var(--green-900); margin-bottom: 12px; font-weight: 700; }
+  .bar-chart { display: flex; gap: 8px; align-items: flex-end; height: 160px; padding: 0 4px; overflow-x: auto; }
+  .bar { flex: 1; min-width: 32px; background: linear-gradient(180deg, var(--green-500), var(--green-700)); border-radius: 4px 4px 0 0; position: relative; }
+  .bar .lbl { position: absolute; bottom: -22px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--muted); }
+  .bar .val { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; color: var(--green-900); }
+  /* Install banner */
+  .install-banner { position: fixed; bottom: 16px; left: 16px; right: 16px; max-width: 440px; margin: 0 auto; background: var(--green-700); color: #fff; padding: 12px 16px; border-radius: 12px; display: flex; gap: 12px; align-items: center; z-index: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+  .install-banner img { width: 40px; height: 40px; border-radius: 20px; }
+  .install-banner .txt { flex: 1; font-size: 13px; }
+  .install-banner button { background: var(--gold); color: #1a1a1a; padding: 6px 14px; font-size: 13px; }
+  .install-banner .close-x { background: transparent; padding: 0 6px; }
+  /* Mobile */
+  @media (max-width: 720px) {
+    .container { padding: 10px; }
+    .row2 { grid-template-columns: 1fr; }
+    .header { padding: 10px 12px; }
+    .brand-text .title { font-size: 15px; }
+    .brand-text .subtitle { font-size: 10px; }
+    .user-info { font-size: 12px; }
+    .modal-side { width: 280px; }
+    th, td { padding: 8px 10px; font-size: 12px; }
+    .card { padding: 16px; }
+  }
 </style>
 </head>
 <body>
 
 <div id="app"></div>
+<div id="installBanner"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
@@ -99,8 +182,35 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v5-signing-engine';
+const APP_VERSION = 'v6-corporate';
 console.log('PG Docs Sign', APP_VERSION);
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW reg failed', e));
+}
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
+function showInstallBanner() {
+  if (!deferredInstallPrompt) return;
+  document.getElementById('installBanner').innerHTML = `
+    <div class="install-banner">
+      <img src="/SignDocs_icon.png">
+      <div class="txt"><strong>Install PG Docs Sign</strong><br><span style="opacity:.85;">Add to home screen for quick access</span></div>
+      <button onclick="doInstall()">Install</button>
+      <button class="close-x" onclick="dismissInstall()">&times;</button>
+    </div>`;
+}
+function doInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.finally(() => { deferredInstallPrompt = null; dismissInstall(); });
+}
+function dismissInstall() { document.getElementById('installBanner').innerHTML = ''; }
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -108,14 +218,26 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById('app');
 let currentUser = null;
 let authMode = 'login';
-let adminView = 'pending-users';
+let adminView = 'dashboard';
 let docsFilter = 'pending';
 let staffTab = 'pending';
+let selectedFiles = [];
 
 function h(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showMsg(id, text, type = 'info') {
   const el = document.getElementById(id);
   if (el) { el.innerHTML = `<div class="msg ${type}">${text}</div>`; setTimeout(() => el.innerHTML = '', 5000); }
+}
+function ageHours(from, to) {
+  return (new Date(to || Date.now()) - new Date(from)) / 36e5;
+}
+function ageBadge(hours) {
+  const h = Math.floor(hours);
+  let cls = 'fresh', label = h + 'h';
+  if (hours >= 24) { cls = 'warm'; label = Math.floor(hours/24) + 'd ' + (h%24) + 'h'; }
+  if (hours >= 48) cls = 'hot';
+  if (hours >= 72) cls = 'critical';
+  return `<span class="age-badge ${cls}">${label}</span>`;
 }
 
 // ---------- ROUTER ----------
@@ -125,26 +247,26 @@ async function route() {
   const { data: profile } = await sb.from('pgds_profiles').select('*').eq('id', session.user.id).single();
   if (!profile) { await sb.auth.signOut(); return renderAuth(); }
   if (profile.status !== 'approved') {
-    await sb.auth.signOut();
-    authMode = 'login';
-    renderAuth();
+    await sb.auth.signOut(); authMode = 'login'; renderAuth();
     showMsg('authMsg', profile.status === 'rejected' ? 'Your account was not approved. Reason: ' + (profile.reject_reason || 'not specified') : 'Your account is still awaiting admin approval.', profile.status === 'rejected' ? 'error' : 'info');
     return;
   }
   currentUser = { id: session.user.id, email: session.user.email, ...profile };
-  if (profile.role === 'admin') renderAdmin();
-  else renderStaff();
+  if (profile.role === 'admin') renderAdmin(); else renderStaff();
 }
 
-// ---------- AUTH SCREEN ----------
+// ---------- AUTH ----------
 async function renderAuth() {
   const stores = await sb.from('pgds_stores').select('*').eq('active', true).order('store_number', { ascending: true });
   const storeOptions = (stores.data || []).map(s => `<option value="${s.id}" data-num="${h(s.store_number)}" data-name="${h(s.store_name)}">${h(s.store_number)} - ${h(s.store_name)}</option>`).join('');
   app.innerHTML = `
     <div class="center">
-      <div class="card">
-        <h1>${authMode === 'signup' ? 'Create your account' : 'Sign in to PG Docs Sign'}</h1>
-        <p class="subtitle">${authMode === 'signup' ? 'After signup you must be approved by the admin.' : 'Enter your credentials to continue.'}</p>
+      <div class="card login-card">
+        <div class="login-header">
+          <img src="/SignDocs_icon.png" alt="PG Docs Sign">
+          <h1>PG Docs Sign</h1>
+          <div class="tag">Digital Signature Portal</div>
+        </div>
         <div id="authMsg"></div>
         <form id="authForm">
           ${authMode === 'signup' ? `
@@ -155,9 +277,9 @@ async function renderAuth() {
           ` : ''}
           <div class="form-group"><label>Email</label><input type="email" id="email" required placeholder="you@example.com"></div>
           <div class="form-group"><label>Password</label><input type="password" id="password" required minlength="6" placeholder="At least 6 characters"></div>
-          <button type="submit" class="btn-full" id="submitBtn">${authMode === 'signup' ? 'Sign up' : 'Sign in'}</button>
+          <button type="submit" class="btn-full" id="submitBtn">${authMode === 'signup' ? 'Create account' : 'Sign in'}</button>
         </form>
-        <p style="text-align:center;margin-top:16px;font-size:13px;">
+        <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted);">
           ${authMode === 'signup' ? 'Already have an account?' : 'New here?'}
           <span class="link" id="switchLink">${authMode === 'signup' ? 'Sign in' : 'Create an account'}</span>
         </p>
@@ -180,9 +302,7 @@ async function handleAuth(e) {
       if (!sel.value) throw new Error('Please select your store.');
       const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
       if (error) throw error;
-      if (data.user) {
-        await sb.from('pgds_profiles').update({ full_name: fullName, store_number: opt.dataset.num, store_name: opt.dataset.name }).eq('id', data.user.id);
-      }
+      if (data.user) await sb.from('pgds_profiles').update({ full_name: fullName, store_number: opt.dataset.num, store_name: opt.dataset.name }).eq('id', data.user.id);
       showMsg('authMsg', 'Account created! Waiting for admin approval.', 'success');
     } else {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -193,17 +313,35 @@ async function handleAuth(e) {
   finally { btn.disabled = false; }
 }
 
-// ---------- STAFF DASHBOARD ----------
-async function renderStaff() {
-  const storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || 'no store';
-  app.innerHTML = `
-    <div class="header"><h1>PG Docs Sign</h1>
-      <div class="user-info"><span>${h(currentUser.full_name || currentUser.email)} - ${h(storeLabel)}</span>
-      <button class="secondary" onclick="logout()">Logout</button></div>
+// ---------- STAFF ----------
+function headerHTML(subtitle) {
+  const storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || '';
+  return `<div class="header">
+    <div class="brand">
+      <img src="/SignDocs_icon.png" alt="">
+      <div class="brand-text">
+        <span class="title">PG Docs Sign</span>
+        <span class="subtitle">${subtitle}</span>
+      </div>
     </div>
+    <div class="user-info">
+      <span class="name">${h(currentUser.full_name || currentUser.email)}</span>
+      ${storeLabel ? `<span>${h(storeLabel)}</span>` : ''}
+      <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+  </div>`;
+}
+
+async function renderStaff() {
+  app.innerHTML = `
+    ${headerHTML('My Documents')}
     <div class="container">
+      <div id="staffKpis" class="kpi-row"></div>
       <div class="box">
-        <h3>Upload a document for signature</h3>
+        <h3>Upload documents for signature</h3>
+        <div class="upload-note">
+          <strong>Note:</strong> Please file / upload documents <strong>per title or per document name</strong>. If a single document has multiple pages or photos, add them all together here — they will be merged into one signed file.
+        </div>
         <div id="uploadMsg"></div>
         <form id="uploadForm">
           <div class="form-group"><label>Document title *</label><input type="text" id="docTitle" required placeholder="e.g. September expense report"></div>
@@ -212,16 +350,22 @@ async function renderStaff() {
               <option value="low">Low</option><option value="normal" selected>Normal</option>
               <option value="high">High</option><option value="urgent">Urgent</option>
             </select></div>
-            <div class="form-group"><label>File (PDF/JPG/PNG, max 5MB) *</label>
-              <label for="fileInput" class="file-drop" id="fileDrop"><span id="fileDropText">Click to choose a file</span></label>
-              <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" required>
+            <div class="form-group"><label>Files (PDF/JPG/PNG, max 5MB each) *</label>
+              <label for="fileInput" class="file-drop" id="fileDrop"><span id="fileDropText">Choose files or take a photo</span></label>
+              <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+              <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple>
+              <div class="upload-buttons">
+                <button type="button" class="secondary" onclick="document.getElementById('fileInput').click()">📁 Choose files</button>
+                <button type="button" class="gold" onclick="document.getElementById('cameraInput').click()">📷 Take photo</button>
+              </div>
+              <div id="fileList" class="file-list"></div>
             </div>
           </div>
           <div class="form-group"><label>Notes (optional)</label><textarea id="docNotes" placeholder="Any note for the signer..."></textarea></div>
           <button type="submit" id="uploadBtn">Upload for signature</button>
         </form>
       </div>
-      <h2 style="font-size:18px;margin-bottom:12px;">My Documents</h2>
+      <h2 style="font-size:16px;margin-bottom:12px;color:var(--green-900);">My Documents</h2>
       <div class="tabs">
         <div class="tab ${staffTab==='pending'?'active':''}" data-t="pending">Pending</div>
         <div class="tab ${staffTab==='approved'?'active':''}" data-t="approved">Approved</div>
@@ -231,41 +375,90 @@ async function renderStaff() {
     </div>`;
   document.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStaff(); });
   document.getElementById('fileInput').onchange = handleFilePick;
+  document.getElementById('cameraInput').onchange = handleFilePick;
   document.getElementById('uploadForm').onsubmit = handleUpload;
+  selectedFiles = [];
+  updateFileList();
+  loadStaffKpis();
   loadMyDocs();
 }
 
-function handleFilePick() {
-  const f = document.getElementById('fileInput').files[0];
-  const drop = document.getElementById('fileDrop'), txt = document.getElementById('fileDropText');
-  if (!f) { drop.classList.remove('has-file'); txt.textContent = 'Click to choose a file'; return; }
-  const mb = f.size / 1048576;
-  if (mb > MAX_FILE_MB) { document.getElementById('fileInput').value = ''; txt.textContent = `Too big (${mb.toFixed(1)}MB). Max ${MAX_FILE_MB}MB.`; drop.classList.remove('has-file'); return; }
-  drop.classList.add('has-file'); txt.textContent = `${f.name} (${mb.toFixed(2)}MB)`;
+async function loadStaffKpis() {
+  const el = document.getElementById('staffKpis');
+  const { data } = await sb.from('pgds_documents').select('status,created_at,signed_at').eq('uploader_id', currentUser.id);
+  const pending = (data||[]).filter(d => d.status === 'pending');
+  const approved = (data||[]).filter(d => d.status === 'approved');
+  const oldestPending = pending.reduce((min, d) => Math.max(min, ageHours(d.created_at)), 0);
+  const avgTurnaround = approved.length ? approved.reduce((s, d) => s + ageHours(d.created_at, d.signed_at), 0) / approved.length : 0;
+  el.innerHTML = `
+    <div class="kpi gold"><div class="label">My Pending</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h' : 'All caught up'}</div></div>
+    <div class="kpi"><div class="label">Approved</div><div class="value">${approved.length}</div><div class="sub">Total signed</div></div>
+    <div class="kpi blue"><div class="label">Avg turnaround</div><div class="value">${avgTurnaround.toFixed(1)}h</div><div class="sub">From upload to signing</div></div>`;
+}
+
+function handleFilePick(e) {
+  const files = Array.from(e.target.files);
+  for (const f of files) {
+    const mb = f.size / 1048576;
+    if (mb > MAX_FILE_MB) { alert(`${f.name} is too big (${mb.toFixed(1)}MB). Max ${MAX_FILE_MB}MB per file.`); continue; }
+    selectedFiles.push(f);
+  }
+  e.target.value = '';
+  updateFileList();
+}
+function updateFileList() {
+  const list = document.getElementById('fileList');
+  const drop = document.getElementById('fileDrop');
+  const txt = document.getElementById('fileDropText');
+  if (!selectedFiles.length) {
+    list.innerHTML = ''; drop.classList.remove('has-file'); txt.textContent = 'Choose files or take a photo';
+    return;
+  }
+  drop.classList.add('has-file');
+  txt.textContent = `${selectedFiles.length} file(s) selected - they will be merged`;
+  list.innerHTML = selectedFiles.map((f, i) => `<div class="file-item"><span>📄 ${h(f.name)} (${(f.size/1048576).toFixed(2)}MB)</span><span class="rm" onclick="removeFile(${i})">Remove</span></div>`).join('');
+}
+function removeFile(i) { selectedFiles.splice(i, 1); updateFileList(); }
+
+async function mergeFilesToPdf(files) {
+  const pdfDoc = await PDFLib.PDFDocument.create();
+  for (const f of files) {
+    const buf = new Uint8Array(await f.arrayBuffer());
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    if (ext === 'pdf') {
+      const src = await PDFLib.PDFDocument.load(buf);
+      const pages = await pdfDoc.copyPages(src, src.getPageIndices());
+      pages.forEach(p => pdfDoc.addPage(p));
+    } else {
+      const img = ['jpg','jpeg'].includes(ext) || f.type === 'image/jpeg' ? await pdfDoc.embedJpg(buf) : await pdfDoc.embedPng(buf);
+      const page = pdfDoc.addPage([img.width, img.height]);
+      page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+    }
+  }
+  return await pdfDoc.save();
 }
 
 async function handleUpload(e) {
   e.preventDefault();
-  const f = document.getElementById('fileInput').files[0];
+  if (!selectedFiles.length) return alert('Please choose at least one file.');
   const title = document.getElementById('docTitle').value.trim();
   const urgency = document.getElementById('docUrgency').value;
   const notes = document.getElementById('docNotes').value.trim();
-  if (!f || !title) return;
+  if (!title) return;
   const btn = document.getElementById('uploadBtn'); btn.disabled = true; btn.textContent = 'Uploading...';
   try {
-    const ext = (f.name.split('.').pop() || 'bin').toLowerCase();
-    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const up = await sb.storage.from('pgds-pending').upload(path, f, { contentType: f.type });
+    const pdfBytes = selectedFiles.length === 1 && selectedFiles[0].name.toLowerCase().endsWith('.pdf') ? new Uint8Array(await selectedFiles[0].arrayBuffer()) : await mergeFilesToPdf(selectedFiles);
+    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.pdf`;
+    const up = await sb.storage.from('pgds-pending').upload(path, pdfBytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
     const ins = await sb.from('pgds_documents').insert({
       uploader_id: currentUser.id, store_number: currentUser.store_number,
       title, notes, urgency, original_file_path: path, status: 'pending'
     });
     if (ins.error) { await sb.storage.from('pgds-pending').remove([path]); throw ins.error; }
-    showMsg('uploadMsg', 'Uploaded! It is now in the signer\'s queue.', 'success');
+    showMsg('uploadMsg', `Uploaded! ${selectedFiles.length} file(s) merged into one signed queue.`, 'success');
     document.getElementById('uploadForm').reset();
-    document.getElementById('fileDrop').classList.remove('has-file');
-    document.getElementById('fileDropText').textContent = 'Click to choose a file';
+    selectedFiles = []; updateFileList();
     staffTab = 'pending'; renderStaff();
   } catch (err) { showMsg('uploadMsg', err.message || err, 'error'); }
   finally { btn.disabled = false; btn.textContent = 'Upload for signature'; }
@@ -277,18 +470,19 @@ async function loadMyDocs() {
   const { data, error } = await sb.from('pgds_documents').select('*').eq('uploader_id', currentUser.id).eq('status', staffTab).order('created_at', { ascending: false });
   if (error) return list.innerHTML = `<div class="msg error">${error.message}</div>`;
   if (!data.length) return list.innerHTML = `<p class="empty">No ${staffTab} documents.</p>`;
-  list.innerHTML = `<table><thead><tr><th>Title</th><th>Urgency</th><th>Uploaded</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-    ${data.map(d => `<tr>
-      <td>${h(d.title)}${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}</td>
+  list.innerHTML = `<table><thead><tr><th>Title</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(d => { const age = ageHours(d.created_at, d.signed_at); return `<tr>
+      <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
+      <td>${ageBadge(age)}${d.signed_at ? `<div style="font-size:11px;color:var(--muted);">until signed</div>` : ''}</td>
       <td><span class="badge ${d.status}">${d.status}</span>${d.status==='rejected'&&d.reject_reason?`<div style="font-size:12px;color:#991b1b;margin-top:4px;">${h(d.reject_reason)}</div>`:''}</td>
       <td class="actions">
-        ${d.status==='approved'&&d.signed_file_path?`<button class="success" onclick="downloadFile('pgds-signed','${d.signed_file_path}')">Download</button>`:''}
-        ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">View</button>`:''}
+        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadFile('pgds-signed','${d.signed_file_path}')">⬇️ Download</button>`:''}
+        ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ View</button>`:''}
         ${d.status==='pending'?`<button class="danger" onclick="cancelDoc('${d.id}','${d.original_file_path}')">Cancel</button>`:''}
       </td>
-    </tr>`).join('')}</tbody></table>`;
+    </tr>`; }).join('')}</tbody></table>`;
 }
 
 async function downloadFile(bucket, path) {
@@ -308,17 +502,16 @@ async function cancelDoc(id, path) {
 // ---------- ADMIN ----------
 async function renderAdmin() {
   app.innerHTML = `
-    <div class="header"><h1>PG Docs Sign - Admin</h1>
-      <div class="user-info"><span>${h(currentUser.full_name || currentUser.email)} (admin)</span>
-      <button class="secondary" onclick="logout()">Logout</button></div>
-    </div>
+    ${headerHTML('Admin Console')}
     <div class="container">
       <div class="tabs">
-        <div class="tab ${adminView==='pending-users'?'active':''}" data-v="pending-users">Pending Approvals <span id="pendingCount"></span></div>
+        <div class="tab ${adminView==='dashboard'?'active':''}" data-v="dashboard">📊 Dashboard</div>
+        <div class="tab ${adminView==='pending-users'?'active':''}" data-v="pending-users">Pending Users <span id="pendingCount"></span></div>
         <div class="tab ${adminView==='users'?'active':''}" data-v="users">All Users</div>
-        <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">Documents Queue <span id="docsCount"></span></div>
+        <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">Documents <span id="docsCount"></span></div>
+        <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved</div>
         <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
-        <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures (soon)</div>
+        <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
       </div>
       <div id="msg"></div>
       <div id="content"></div>
@@ -339,11 +532,60 @@ async function updateAdminCounts() {
 
 async function renderAdminView() {
   const el = document.getElementById('content');
+  if (adminView === 'dashboard') return renderDashboard(el);
   if (adminView === 'pending-users') return renderPendingUsers(el);
   if (adminView === 'users') return renderAllUsers(el);
   if (adminView === 'documents') return renderDocuments(el);
+  if (adminView === 'approved-folders') return renderApprovedFolders(el);
   if (adminView === 'stores') return renderStores(el);
-  if (adminView === 'signatures') return el.innerHTML = '<p class="empty">Signature manager coming in Phase 3.</p>';
+  if (adminView === 'signatures') return renderSignaturesMgr(el);
+}
+
+async function renderDashboard(el) {
+  el.innerHTML = '<p class="empty">Loading dashboard...</p>';
+  const { data: docs } = await sb.from('pgds_documents').select('id,status,created_at,signed_at,store_number,urgency');
+  const all = docs || [];
+  const pending = all.filter(d => d.status === 'pending');
+  const approved = all.filter(d => d.status === 'approved');
+  const rejected = all.filter(d => d.status === 'rejected');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const signedToday = approved.filter(d => d.signed_at && new Date(d.signed_at) >= today).length;
+  const oldestPending = pending.reduce((max, d) => Math.max(max, ageHours(d.created_at)), 0);
+  const avgWait = approved.length ? approved.reduce((s, d) => s + ageHours(d.created_at, d.signed_at), 0) / approved.length : 0;
+  const critical = pending.filter(d => ageHours(d.created_at) >= 48).length;
+  const urgent = pending.filter(d => d.urgency === 'urgent' || d.urgency === 'high').length;
+  // Docs per store
+  const byStore = {};
+  pending.forEach(d => { const k = d.store_number || 'unassigned'; byStore[k] = (byStore[k] || 0) + 1; });
+  const storeEntries = Object.entries(byStore).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  const maxCount = Math.max(1, ...storeEntries.map(e => e[1]));
+
+  el.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi gold"><div class="label">Pending Now</div><div class="value">${pending.length}</div><div class="sub">${urgent} urgent/high</div></div>
+      <div class="kpi"><div class="label">Signed Today</div><div class="value">${signedToday}</div><div class="sub">of ${approved.length} total signed</div></div>
+      <div class="kpi blue"><div class="label">Avg Wait Time</div><div class="value">${avgWait.toFixed(1)}h</div><div class="sub">Upload → Signature</div></div>
+      <div class="kpi red"><div class="label">Oldest Pending</div><div class="value">${Math.floor(oldestPending)}h</div><div class="sub">${critical} over 48h</div></div>
+    </div>
+    ${storeEntries.length ? `
+      <div class="chart-box">
+        <h3>📊 Pending documents by store (top 10)</h3>
+        <div class="bar-chart">
+          ${storeEntries.map(([store, count]) => `<div class="bar" style="height:${(count/maxCount*140)}px" title="Store ${store}: ${count} pending"><span class="val">${count}</span><span class="lbl">${h(store)}</span></div>`).join('')}
+        </div>
+        <div style="height:24px;"></div>
+      </div>` : ''}
+    <div class="box">
+      <h3>Recent activity</h3>
+      <table><thead><tr><th>Doc</th><th>Store</th><th>Status</th><th>Age</th></tr></thead><tbody>
+        ${all.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10).map(d => `<tr>
+          <td>${new Date(d.created_at).toLocaleString()}</td>
+          <td>${h(d.store_number || '-')}</td>
+          <td><span class="badge ${d.status}">${d.status}</span></td>
+          <td>${ageBadge(ageHours(d.created_at, d.signed_at))}</td>
+        </tr>`).join('') || '<tr><td colspan="4" class="empty">No documents yet.</td></tr>'}
+      </tbody></table>
+    </div>`;
 }
 
 async function renderPendingUsers(el) {
@@ -358,7 +600,7 @@ async function renderPendingUsers(el) {
       <td><input type="text" style="width:180px" id="sname-${u.id}" value="${h(u.store_name||'')}"></td>
       <td>${new Date(u.created_at).toLocaleString()}</td>
       <td class="actions">
-        <button class="success" onclick="approveUser('${u.id}')">Approve</button>
+        <button onclick="approveUser('${u.id}')">Approve</button>
         <button class="danger" onclick="rejectUser('${u.id}')">Reject</button>
       </td>
     </tr>`).join('')}</tbody></table>`;
@@ -375,9 +617,9 @@ async function renderAllUsers(el) {
       <td>${h(u.store_number||'-')}</td><td>${h(u.store_name||'-')}</td>
       <td><span class="badge ${u.role==='admin'?'urgent':'normal'}">${u.role}</span></td>
       <td><span class="badge ${u.status}">${u.status}</span></td>
-      <td>${u.approved_by&&nameById[u.approved_by]?h(nameById[u.approved_by]):'-'}${u.approved_at?`<div style="font-size:11px;color:#64748b;">${new Date(u.approved_at).toLocaleDateString()}</div>`:''}</td>
+      <td>${u.approved_by&&nameById[u.approved_by]?h(nameById[u.approved_by]):'-'}${u.approved_at?`<div style="font-size:11px;color:var(--muted);">${new Date(u.approved_at).toLocaleDateString()}</div>`:''}</td>
       <td class="actions">
-        ${u.status!=='approved'?`<button class="success" onclick="approveUser('${u.id}',true)">Approve</button>`:''}
+        ${u.status!=='approved'?`<button onclick="approveUser('${u.id}',true)">Approve</button>`:''}
         ${u.status!=='rejected'&&u.id!==currentUser.id?`<button class="danger" onclick="rejectUser('${u.id}',true)">Reject</button>`:''}
       </td>
     </tr>`).join('')}</tbody></table>`;
@@ -402,20 +644,60 @@ async function renderDocuments(el) {
     const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
     (ps||[]).forEach(p => profMap[p.id] = p);
   }
-  body.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store #</th><th>Store Name</th><th>Urgency</th><th>Uploaded</th><th>Actions</th></tr></thead><tbody>
-    ${data.map(d => { const up = profMap[d.uploader_id]||{}; return `<tr>
-      <td>${h(d.title)}${d.notes?`<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>`:''}</td>
+  body.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(d => { const up = profMap[d.uploader_id]||{}; const age = ageHours(d.created_at, d.signed_at); return `<tr>
+      <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${h(d.notes)}</div>`:''}</td>
       <td>${h(up.full_name||up.email||'-')}</td>
-      <td>${h(d.store_number||up.store_number||'-')}</td>
-      <td>${h(up.store_name||'-')}</td>
+      <td>${h(d.store_number||up.store_number||'-')} - ${h(up.store_name||'')}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
+      <td>${ageBadge(age)}</td>
       <td class="actions">
-        <button class="secondary" onclick="viewAdminDoc('${d.status==='approved'&&d.signed_file_path?'pgds-signed':(d.status==='rejected'?'pgds-rejected':'pgds-pending')}','${d.status==='approved'&&d.signed_file_path?d.signed_file_path:d.original_file_path}')">View</button>
-        ${d.status==='pending'?`<button class="success" onclick="signDoc('${d.id}')">Sign</button>`:''}
+        <button class="secondary" onclick="viewAdminDoc('${d.status==='approved'&&d.signed_file_path?'pgds-signed':(d.status==='rejected'?'pgds-rejected':'pgds-pending')}','${d.status==='approved'&&d.signed_file_path?d.signed_file_path:d.original_file_path}')">👁️ View</button>
+        ${d.status==='pending'?`<button onclick="signDoc('${d.id}')">✍️ Sign</button>`:''}
         ${d.status==='pending'?`<button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>`:''}
       </td>
     </tr>`; }).join('')}</tbody></table>`;
+}
+
+async function renderApprovedFolders(el) {
+  el.innerHTML = '<p class="empty">Loading folders...</p>';
+  const { data } = await sb.from('pgds_documents').select('*').eq('status', 'approved').order('signed_at', { ascending: false });
+  if (!data || !data.length) return el.innerHTML = '<p class="empty">No approved documents yet.</p>';
+  const uids = [...new Set(data.map(d => d.uploader_id))];
+  const profMap = {};
+  if (uids.length) {
+    const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
+    (ps||[]).forEach(p => profMap[p.id] = p);
+  }
+  // Group by store
+  const byStore = {};
+  data.forEach(d => {
+    const up = profMap[d.uploader_id] || {};
+    const key = `${d.store_number || up.store_number || '?'} - ${up.store_name || 'Unassigned'}`;
+    (byStore[key] = byStore[key] || []).push({ d, up });
+  });
+  el.innerHTML = `<h3 style="margin-bottom:12px;color:var(--green-900);">📁 Approved documents by store</h3>` +
+    Object.entries(byStore).sort().map(([store, items], idx) => `
+      <div class="folder-group ${idx===0?'open':''}">
+        <div class="folder-head" onclick="this.parentElement.classList.toggle('open')">
+          <span class="name">📂 ${h(store)}</span>
+          <span class="count">${items.length}</span>
+        </div>
+        <div class="folder-body">
+          <table><thead><tr><th>Title</th><th>Uploaded by</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
+            ${items.map(({d, up}) => `<tr>
+              <td><strong>${h(d.title)}</strong></td>
+              <td>${h(up.full_name || up.email || '-')}</td>
+              <td>${d.signed_at ? new Date(d.signed_at).toLocaleString() : '-'}</td>
+              <td class="actions">
+                <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
+                <button onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">⬇️ Download</button>
+              </td>
+            </tr>`).join('')}
+          </tbody></table>
+        </div>
+      </div>`).join('');
 }
 
 async function viewAdminDoc(bucket, path) {
@@ -424,21 +706,154 @@ async function viewAdminDoc(bucket, path) {
   window.open(data.signedUrl, '_blank');
 }
 
+async function rejectDoc(id) {
+  const reason = prompt('Reason for rejection:') || '';
+  if (!reason) return;
+  const { error } = await sb.from('pgds_documents').update({ status: 'rejected', reject_reason: reason, signed_by: currentUser.id, signed_at: new Date().toISOString() }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'Document rejected.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function approveUser(id) {
+  const numEl = document.getElementById(`snum-${id}`), nameEl = document.getElementById(`sname-${id}`);
+  const patch = { status: 'approved', approved_at: new Date().toISOString(), approved_by: currentUser.id };
+  if (numEl) patch.store_number = numEl.value.trim();
+  if (nameEl) patch.store_name = nameEl.value.trim();
+  const { error } = await sb.from('pgds_profiles').update(patch).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'User approved.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function rejectUser(id) {
+  const reason = prompt('Reason for rejection (optional):') || '';
+  const { error } = await sb.from('pgds_profiles').update({ status: 'rejected', reject_reason: reason }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'User rejected.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function renderStores(el) {
+  el.innerHTML = `
+    <div class="box">
+      <h3>Add a new store</h3>
+      <form id="addStoreForm" style="display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:end;">
+        <div class="form-group" style="margin:0"><label>Store #</label><input type="text" id="newStoreNum" required></div>
+        <div class="form-group" style="margin:0"><label>Store name</label><input type="text" id="newStoreName" required></div>
+        <button type="submit">Add store</button>
+      </form>
+    </div>
+    <div id="storesBody"><p class="empty">Loading...</p></div>`;
+  document.getElementById('addStoreForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const num = document.getElementById('newStoreNum').value.trim();
+    const name = document.getElementById('newStoreName').value.trim();
+    const { error } = await sb.from('pgds_stores').insert({ store_number: num, store_name: name, created_by: currentUser.id });
+    if (error) return showMsg('msg', error.message, 'error');
+    showMsg('msg', 'Store added.', 'success'); renderStores(el);
+  };
+  const body = document.getElementById('storesBody');
+  const { data, error } = await sb.from('pgds_stores').select('*').order('store_number', { ascending: true });
+  if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return body.innerHTML = '<p class="empty">No stores yet.</p>';
+  body.innerHTML = `<table><thead><tr><th>Store #</th><th>Store Name / Branch</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(s => `<tr>
+      <td><input type="text" style="width:80px" id="stn-${s.id}" value="${h(s.store_number)}"></td>
+      <td><input type="text" style="width:100%" id="stnm-${s.id}" value="${h(s.store_name)}"></td>
+      <td><span class="badge ${s.active?'approved':'rejected'}">${s.active?'active':'inactive'}</span></td>
+      <td>${new Date(s.created_at).toLocaleDateString()}</td>
+      <td class="actions">
+        <button onclick="saveStore('${s.id}')">Save</button>
+        <button class="secondary" onclick="toggleStore('${s.id}',${!s.active})">${s.active?'Deactivate':'Activate'}</button>
+        <button class="danger" onclick="deleteStore('${s.id}')">Delete</button>
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function saveStore(id) {
+  const num = document.getElementById(`stn-${id}`).value.trim();
+  const name = document.getElementById(`stnm-${id}`).value.trim();
+  const { error } = await sb.from('pgds_stores').update({ store_number: num, store_name: name }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'Store updated.', 'success');
+}
+async function toggleStore(id, active) {
+  const { error } = await sb.from('pgds_stores').update({ active }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  renderAdminView();
+}
+async function deleteStore(id) {
+  if (!confirm('Delete this store?')) return;
+  const { error } = await sb.from('pgds_stores').delete().eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  renderAdminView();
+}
+
+async function renderSignaturesMgr(el) {
+  el.innerHTML = '<p class="empty">Loading...</p>';
+  const { data } = await sb.from('pgds_signatures').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
+  el.innerHTML = `
+    <div class="box">
+      <h3>Draw a new saved signature</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Draw once, reuse forever from the Sign panel.</p>
+      <canvas id="sigMgrCanvas" class="draw-canvas" width="400" height="140"></canvas>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:end;">
+        <div style="flex:1;"><label>Name</label><input type="text" id="sigMgrName" placeholder="e.g. Main signature"></div>
+        <button class="secondary" onclick="clearMgrCanvas()">Clear</button>
+        <button onclick="saveMgrSig()">Save signature</button>
+      </div>
+    </div>
+    <h3 style="color:var(--green-900);margin-bottom:10px;">Saved signatures</h3>
+    ${(data||[]).length ? `<div class="saved-sigs" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));">
+      ${(data||[]).map(s => `<div class="saved-sig">
+        <img src="${s.image_data}">
+        <div style="font-size:12px;margin-top:6px;">${h(s.name)}</div>
+        <span class="del" onclick="deleteSavedSigMgr('${s.id}')">&times;</span>
+      </div>`).join('')}
+    </div>` : '<p class="empty">No saved signatures yet.</p>'}`;
+  initMgrCanvas();
+}
+
+let mgrCtx = null, mgrDrawing = false, mgrDrawn = false;
+function initMgrCanvas() {
+  const c = document.getElementById('sigMgrCanvas');
+  mgrCtx = c.getContext('2d');
+  mgrCtx.strokeStyle = '#064e3b'; mgrCtx.lineWidth = 2.5; mgrCtx.lineCap = 'round';
+  mgrDrawn = false;
+  const start = (e) => { mgrDrawing = true; mgrDrawn = true; const p = getPt(e, c); mgrCtx.beginPath(); mgrCtx.moveTo(p.x, p.y); };
+  const move = (e) => { if (!mgrDrawing) return; const p = getPt(e, c); mgrCtx.lineTo(p.x, p.y); mgrCtx.stroke(); e.preventDefault(); };
+  const end = () => { mgrDrawing = false; };
+  c.onmousedown = start; c.onmousemove = move; c.onmouseup = end; c.onmouseleave = end;
+  c.ontouchstart = start; c.ontouchmove = move; c.ontouchend = end;
+}
+function clearMgrCanvas() { const c = document.getElementById('sigMgrCanvas'); mgrCtx.clearRect(0,0,c.width,c.height); mgrDrawn = false; }
+async function saveMgrSig() {
+  if (!mgrDrawn) return alert('Please draw a signature first.');
+  const name = document.getElementById('sigMgrName').value.trim() || 'Signature';
+  const c = document.getElementById('sigMgrCanvas');
+  const dataUrl = trimCanvas(c).toDataURL('image/png');
+  const { error } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl });
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'Signature saved.', 'success');
+  renderSignaturesMgr(document.getElementById('content'));
+}
+async function deleteSavedSigMgr(id) {
+  if (!confirm('Delete this signature?')) return;
+  await sb.from('pgds_signatures').delete().eq('id', id);
+  renderSignaturesMgr(document.getElementById('content'));
+}
+
 // ---------- SIGNING ENGINE ----------
-let sigState = { doc: null, pdfDoc: null, pages: [], overlays: [], mySignatures: [] };
+let sigState = { doc: null, pages: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
 
 async function signDoc(id) {
   const { data: docRow, error } = await sb.from('pgds_documents').select('*').eq('id', id).single();
   if (error) return alert(error.message);
-  sigState.doc = docRow;
-  sigState.overlays = [];
-  await loadMySignatures();
+  sigState = { doc: docRow, pages: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
+  const { data: sigs } = await sb.from('pgds_signatures').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
+  sigState.mySignatures = sigs || [];
   await openSigningModal();
-}
-
-async function loadMySignatures() {
-  const { data } = await sb.from('pgds_signatures').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
-  sigState.mySignatures = data || [];
 }
 
 async function openSigningModal() {
@@ -451,7 +866,7 @@ async function openSigningModal() {
     <div class="modal-doc" id="modalDoc"><p style="color:#fff">Loading document...</p></div>
     <div class="modal-side">
       <h3>Signing tools</h3>
-      <div style="font-size:12px;color:#64748b;">${h(doc.title)}</div>
+      <div style="font-size:12px;color:var(--muted);">${h(doc.title)}</div>
       <div class="tool-tabs">
         <div class="tool-tab active" data-tool="draw">Draw</div>
         <div class="tool-tab" data-tool="saved">Saved</div>
@@ -459,18 +874,17 @@ async function openSigningModal() {
         <div class="tool-tab" data-tool="stamp">Stamp</div>
       </div>
       <div id="toolPanel"></div>
-      <hr style="margin:8px 0;border:none;border-top:1px solid #e5e7eb">
+      <hr style="margin:8px 0;border:none;border-top:1px solid var(--border)">
       <h3>Placed items</h3>
-      <div id="overlayList" style="font-size:12px;color:#64748b;">None yet - use tools above and click Add.</div>
-      <hr style="margin:8px 0;border:none;border-top:1px solid #e5e7eb">
-      <button class="success" id="applyBtn" onclick="applySignatures()">Apply & Approve</button>
+      <div id="overlayList" style="font-size:12px;color:var(--muted);">None yet - use tools above.</div>
+      <hr style="margin:8px 0;border:none;border-top:1px solid var(--border)">
+      <button id="applyBtn" onclick="applySignatures()">✓ Apply & Approve</button>
       <button class="secondary" onclick="closeSigningModal()">Cancel</button>
     </div>`;
   document.body.appendChild(modal);
   modal.querySelectorAll('.tool-tab').forEach(t => t.onclick = () => {
     modal.querySelectorAll('.tool-tab').forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    renderToolPanel(t.dataset.tool);
+    t.classList.add('active'); renderToolPanel(t.dataset.tool);
   });
   renderToolPanel('draw');
   await loadDocForSigning();
@@ -480,35 +894,34 @@ function renderToolPanel(tool) {
   const p = document.getElementById('toolPanel');
   if (tool === 'draw') {
     p.innerHTML = `
-      <p style="font-size:12px;color:#64748b;">Draw with mouse or finger:</p>
-      <canvas id="drawCanvas" class="draw-canvas" width="280" height="120"></canvas>
+      <p style="font-size:12px;color:var(--muted);">Draw with mouse or finger:</p>
+      <canvas id="drawCanvas" class="draw-canvas" width="300" height="120"></canvas>
       <div style="display:flex;gap:6px;">
         <button class="secondary" onclick="clearDraw()">Clear</button>
         <button onclick="addDrawnToDoc()">Add to doc</button>
       </div>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;">
-        <input type="checkbox" id="saveDrawn" style="width:auto;"> Save this signature for reuse
+        <input type="checkbox" id="saveDrawn" style="width:auto;"> Save this for reuse
       </label>
-      <input type="text" id="drawName" placeholder="Signature name (if saving)" style="font-size:12px;">`;
+      <input type="text" id="drawName" placeholder="Signature name" style="font-size:12px;">`;
     initDrawCanvas();
   } else if (tool === 'saved') {
     p.innerHTML = sigState.mySignatures.length ? `
-      <p style="font-size:12px;color:#64748b;">Click a signature to add:</p>
+      <p style="font-size:12px;color:var(--muted);">Click a signature to add:</p>
       <div class="saved-sigs">
-        ${sigState.mySignatures.map(s => `
-          <div class="saved-sig" onclick="addSavedToDoc('${s.id}')">
-            <span class="del" onclick="event.stopPropagation();deleteSavedSig('${s.id}')">&times;</span>
-            <img src="${s.image_data}"><div style="font-size:11px;margin-top:4px;">${h(s.name)}</div>
-          </div>`).join('')}
-      </div>` : '<p style="font-size:12px;color:#64748b;">No saved signatures yet. Use the Draw tab and check "Save this signature".</p>';
+        ${sigState.mySignatures.map(s => `<div class="saved-sig" onclick="addSavedToDoc('${s.id}')">
+          <span class="del" onclick="event.stopPropagation();deleteSavedSig('${s.id}')">&times;</span>
+          <img src="${s.image_data}"><div style="font-size:11px;margin-top:4px;">${h(s.name)}</div>
+        </div>`).join('')}
+      </div>` : '<p style="font-size:12px;color:var(--muted);">No saved signatures. Draw one first.</p>';
   } else if (tool === 'text') {
     p.innerHTML = `
-      <p style="font-size:12px;color:#64748b;">Type a name (useful when staff forgot to write it):</p>
+      <p style="font-size:12px;color:var(--muted);">Type a name (useful when staff forgot):</p>
       <input type="text" id="typedName" placeholder="e.g. C. M. Nemo" style="font-size:14px;">
       <button onclick="addTypedToDoc()">Add to doc</button>`;
   } else if (tool === 'stamp') {
     p.innerHTML = `
-      <p style="font-size:12px;color:#64748b;">Add approval stamp:</p>
+      <p style="font-size:12px;color:var(--muted);">Add stamp:</p>
       <select id="stampText">
         <option>APPROVED</option><option>REVIEWED</option><option>PAID</option><option>RECEIVED</option>
       </select>
@@ -516,12 +929,11 @@ function renderToolPanel(tool) {
   }
 }
 
-// Drawing canvas
 let drawCtx = null, drawing = false, drawnAny = false;
 function initDrawCanvas() {
   const c = document.getElementById('drawCanvas');
   drawCtx = c.getContext('2d');
-  drawCtx.strokeStyle = '#1e40af'; drawCtx.lineWidth = 2.5; drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+  drawCtx.strokeStyle = '#064e3b'; drawCtx.lineWidth = 2.5; drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
   drawnAny = false;
   const start = (e) => { drawing = true; drawnAny = true; const p = getPt(e, c); drawCtx.beginPath(); drawCtx.moveTo(p.x, p.y); };
   const move = (e) => { if (!drawing) return; const p = getPt(e, c); drawCtx.lineTo(p.x, p.y); drawCtx.stroke(); e.preventDefault(); };
@@ -534,21 +946,17 @@ function getPt(e, c) {
   const t = e.touches ? e.touches[0] : e;
   return { x: t.clientX - r.left, y: t.clientY - r.top };
 }
-function clearDraw() {
-  const c = document.getElementById('drawCanvas');
-  drawCtx.clearRect(0, 0, c.width, c.height); drawnAny = false;
-}
+function clearDraw() { const c = document.getElementById('drawCanvas'); drawCtx.clearRect(0,0,c.width,c.height); drawnAny = false; }
 
 async function addDrawnToDoc() {
   if (!drawnAny) return alert('Please draw a signature first.');
   const c = document.getElementById('drawCanvas');
-  const trimmed = trimCanvas(c);
-  const dataUrl = trimmed.toDataURL('image/png');
+  const dataUrl = trimCanvas(c).toDataURL('image/png');
   addImageOverlay(dataUrl, 180, 60);
   if (document.getElementById('saveDrawn').checked) {
     const name = document.getElementById('drawName').value.trim() || 'Signature ' + (sigState.mySignatures.length + 1);
-    const { data, error } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl }).select().single();
-    if (!error && data) { sigState.mySignatures.unshift(data); }
+    const { data } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl }).select().single();
+    if (data) sigState.mySignatures.unshift(data);
   }
 }
 
@@ -622,8 +1030,8 @@ function removeOverlay(id) {
 }
 function updateOverlayList() {
   const el = document.getElementById('overlayList');
-  if (!sigState.overlays.length) return el.innerHTML = 'None yet - use tools above and click Add.';
-  el.innerHTML = sigState.overlays.map((o, i) => `<div style="padding:4px 0;">${i+1}. ${o.type === 'image' ? 'Signature' : (o.isStamp ? 'Stamp: ' + o.text : 'Typed: ' + o.text)} <span style="color:#dc2626;cursor:pointer" onclick="removeOverlay('${o.id}')">remove</span></div>`).join('');
+  if (!sigState.overlays.length) return el.innerHTML = 'None yet - use tools above.';
+  el.innerHTML = sigState.overlays.map((o, i) => `<div style="padding:4px 0;">${i+1}. ${o.type === 'image' ? 'Signature' : (o.isStamp ? 'Stamp: ' + o.text : 'Typed: ' + o.text)} <span style="color:var(--red);cursor:pointer" onclick="removeOverlay('${o.id}')">remove</span></div>`).join('');
 }
 
 function makeDraggable(el) {
@@ -663,7 +1071,7 @@ async function loadDocForSigning() {
   const buf = await resp.arrayBuffer();
   const ext = doc.original_file_path.split('.').pop().toLowerCase();
   let pdfBytes;
-  if (ext === 'pdf') { pdfBytes = new Uint8Array(buf); }
+  if (ext === 'pdf') pdfBytes = new Uint8Array(buf);
   else {
     const pdfDoc = await PDFLib.PDFDocument.create();
     const imgBytes = new Uint8Array(buf);
@@ -673,11 +1081,8 @@ async function loadDocForSigning() {
     pdfBytes = await pdfDoc.save();
   }
   sigState.pdfBytes = pdfBytes;
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() });
-  const pdf = await loadingTask.promise;
-  modalDoc.innerHTML = '';
-  sigState.pages = [];
-  sigState.pageInfo = [];
+  const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+  modalDoc.innerHTML = ''; sigState.pages = []; sigState.pageInfo = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const viewport = page.getViewport({ scale: 1.3 });
@@ -690,19 +1095,18 @@ async function loadDocForSigning() {
     modalDoc.appendChild(wrap);
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
     sigState.pages.push(wrap);
-    sigState.pageInfo.push({ w: viewport.width, h: viewport.height, scale: 1.3 });
+    sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
   }
 }
 
 async function applySignatures() {
-  if (!sigState.overlays.length) return alert('Add at least one signature/stamp before applying.');
+  if (!sigState.overlays.length) return alert('Add at least one signature or stamp before applying.');
   const btn = document.getElementById('applyBtn'); btn.disabled = true; btn.textContent = 'Applying...';
   try {
     const pdfDoc = await PDFLib.PDFDocument.load(sigState.pdfBytes);
     const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
     const pdfPages = pdfDoc.getPages();
     for (const ov of sigState.overlays) {
-      const pageWrap = sigState.pages[ov.pageIdx];
       const info = sigState.pageInfo[ov.pageIdx];
       const pdfPage = pdfPages[ov.pageIdx];
       const pdfW = pdfPage.getWidth(), pdfH = pdfPage.getHeight();
@@ -723,7 +1127,7 @@ async function applySignatures() {
           const textW = font.widthOfTextAtSize(ov.text, fontSize);
           pdfPage.drawText(ov.text, { x: x + (w - textW) / 2, y: y + (hh - fontSize) / 2 + 4, size: fontSize, font, color: PDFLib.rgb(0.86, 0.15, 0.15) });
         } else {
-          pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: PDFLib.rgb(0.12, 0.25, 0.69) });
+          pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: PDFLib.rgb(0.02, 0.31, 0.18) });
         }
       }
     }
@@ -737,105 +1141,20 @@ async function applySignatures() {
     if (upd.error) throw upd.error;
     closeSigningModal();
     renderAdminView(); updateAdminCounts();
-    alert('Signed and approved successfully!');
+    alert('Signed and approved!');
   } catch (err) {
     alert('Error: ' + (err.message || err));
-    btn.disabled = false; btn.textContent = 'Apply & Approve';
+    btn.disabled = false; btn.textContent = '✓ Apply & Approve';
   }
 }
 
 function closeSigningModal() {
   const m = document.getElementById('sigModal'); if (m) m.remove();
-  sigState = { doc: null, pdfDoc: null, pages: [], overlays: [], mySignatures: [] };
-}
-
-async function rejectDoc(id) {
-  const reason = prompt('Reason for rejection:') || '';
-  if (!reason) return;
-  const { error } = await sb.from('pgds_documents').update({ status: 'rejected', reject_reason: reason, signed_by: currentUser.id, signed_at: new Date().toISOString() }).eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  showMsg('msg', 'Document rejected.', 'success');
-  renderAdminView(); updateAdminCounts();
-}
-
-async function approveUser(id) {
-  const numEl = document.getElementById(`snum-${id}`), nameEl = document.getElementById(`sname-${id}`);
-  const patch = { status: 'approved', approved_at: new Date().toISOString(), approved_by: currentUser.id };
-  if (numEl) patch.store_number = numEl.value.trim();
-  if (nameEl) patch.store_name = nameEl.value.trim();
-  const { error } = await sb.from('pgds_profiles').update(patch).eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  showMsg('msg', 'User approved.', 'success');
-  renderAdminView(); updateAdminCounts();
-}
-
-async function rejectUser(id) {
-  const reason = prompt('Reason for rejection (optional):') || '';
-  const { error } = await sb.from('pgds_profiles').update({ status: 'rejected', reject_reason: reason }).eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  showMsg('msg', 'User rejected.', 'success');
-  renderAdminView(); updateAdminCounts();
-}
-
-async function renderStores(el) {
-  el.innerHTML = `
-    <div class="box">
-      <h3>Add a new store</h3>
-      <form id="addStoreForm" style="display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:end;">
-        <div class="form-group" style="margin:0"><label>Store #</label><input type="text" id="newStoreNum" required></div>
-        <div class="form-group" style="margin:0"><label>Store name</label><input type="text" id="newStoreName" required></div>
-        <button type="submit">Add store</button>
-      </form>
-    </div>
-    <div id="storesBody"><p class="empty">Loading...</p></div>`;
-  document.getElementById('addStoreForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const num = document.getElementById('newStoreNum').value.trim();
-    const name = document.getElementById('newStoreName').value.trim();
-    const { error } = await sb.from('pgds_stores').insert({ store_number: num, store_name: name, created_by: currentUser.id });
-    if (error) return showMsg('msg', error.message, 'error');
-    showMsg('msg', 'Store added.', 'success'); renderStores(el);
-  };
-  const body = document.getElementById('storesBody');
-  const { data, error } = await sb.from('pgds_stores').select('*').order('store_number', { ascending: true });
-  if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
-  if (!data.length) return body.innerHTML = '<p class="empty">No stores yet.</p>';
-  body.innerHTML = `<table><thead><tr><th>Store #</th><th>Store Name / Branch</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead><tbody>
-    ${data.map(s => `<tr>
-      <td><input type="text" style="width:80px" id="stn-${s.id}" value="${h(s.store_number)}"></td>
-      <td><input type="text" style="width:100%" id="stnm-${s.id}" value="${h(s.store_name)}"></td>
-      <td><span class="badge ${s.active?'approved':'rejected'}">${s.active?'active':'inactive'}</span></td>
-      <td>${new Date(s.created_at).toLocaleDateString()}</td>
-      <td class="actions">
-        <button class="success" onclick="saveStore('${s.id}')">Save</button>
-        <button class="secondary" onclick="toggleStore('${s.id}',${!s.active})">${s.active?'Deactivate':'Activate'}</button>
-        <button class="danger" onclick="deleteStore('${s.id}')">Delete</button>
-      </td>
-    </tr>`).join('')}</tbody></table>`;
-}
-
-async function saveStore(id) {
-  const num = document.getElementById(`stn-${id}`).value.trim();
-  const name = document.getElementById(`stnm-${id}`).value.trim();
-  const { error } = await sb.from('pgds_stores').update({ store_number: num, store_name: name }).eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  showMsg('msg', 'Store updated.', 'success');
-}
-async function toggleStore(id, active) {
-  const { error } = await sb.from('pgds_stores').update({ active }).eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  renderAdminView();
-}
-async function deleteStore(id) {
-  if (!confirm('Delete this store?')) return;
-  const { error } = await sb.from('pgds_stores').delete().eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  renderAdminView();
+  sigState = { doc: null, pages: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
 }
 
 async function logout() { await sb.auth.signOut(); currentUser = null; route(); }
 
-// start
 route();
 </script>
 </body>
