@@ -217,7 +217,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7.2-fit-place';
+const APP_VERSION = 'v7.3-save-approve';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -949,7 +949,8 @@ async function openSigningModal() {
       <button class="modal-tool-btn" onclick="uploadSignatureImage()"><span class="ic">📤</span>Upload</button>
       <button class="modal-tool-btn" onclick="showTextPopover()"><span class="ic">🔤</span>Add Text</button>
       <button class="modal-tool-btn" onclick="showStampPopover()"><span class="ic">✅</span>Stamp</button>
-      <button class="modal-tool-btn primary" id="applyBtn" onclick="applySignatures()"><span class="ic">💾</span>Save & Approve</button>
+      <button class="modal-tool-btn" id="saveBtn" onclick="saveSignatures()"><span class="ic">💾</span>Save</button>
+      <button class="modal-tool-btn primary" id="approveBtn" onclick="approveDoc()"><span class="ic">✅</span>Approve</button>
     </div>
     <input type="file" id="sigUploadInput" accept="image/png,image/jpeg" style="display:none;">`;
   document.body.appendChild(modal);
@@ -1305,11 +1306,15 @@ function makeDraggable(el) {
 async function loadDocForSigning() {
   const doc = sigState.doc;
   const modalDoc = document.getElementById('modalDoc');
-  const { data: signed, error: se } = await sb.storage.from('pgds-pending').createSignedUrl(doc.original_file_path, 300);
+  // If already partially signed (saved but not approved), load the working signed version
+  const useSigned = doc.signed_file_path && doc.status === 'pending';
+  const bucket = useSigned ? 'pgds-signed' : 'pgds-pending';
+  const path = useSigned ? doc.signed_file_path : doc.original_file_path;
+  const { data: signed, error: se } = await sb.storage.from(bucket).createSignedUrl(path, 300);
   if (se) return modalDoc.innerHTML = `<div class="msg error">${se.message}</div>`;
   const resp = await fetch(signed.signedUrl);
   const buf = await resp.arrayBuffer();
-  const ext = doc.original_file_path.split('.').pop().toLowerCase();
+  const ext = path.split('.').pop().toLowerCase();
   let pdfBytes;
   if (ext === 'pdf') pdfBytes = new Uint8Array(buf);
   else {
@@ -1355,52 +1360,103 @@ function centerOfVisible(pageWrap, ovW, ovH) {
   return { left, top };
 }
 
-async function applySignatures() {
-  if (!sigState.overlays.length) return alert('Add at least one signature or stamp before applying.');
-  const btn = document.getElementById('applyBtn'); btn.disabled = true; btn.textContent = 'Applying...';
-  try {
-    const pdfDoc = await PDFLib.PDFDocument.load(sigState.pdfBytes);
-    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-    const pdfPages = pdfDoc.getPages();
-    for (const ov of sigState.overlays) {
-      const info = sigState.pageInfo[ov.pageIdx];
-      const pdfPage = pdfPages[ov.pageIdx];
-      const pdfW = pdfPage.getWidth(), pdfH = pdfPage.getHeight();
-      const scaleX = pdfW / info.w, scaleY = pdfH / info.h;
-      const x = ov.el.offsetLeft * scaleX;
-      const w = ov.el.offsetWidth * scaleX;
-      const hh = ov.el.offsetHeight * scaleY;
-      const y = pdfH - (ov.el.offsetTop * scaleY) - hh;
-      if (ov.type === 'image') {
-        const b64 = ov.dataUrl.split(',')[1];
-        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-        const img = await pdfDoc.embedPng(bytes);
-        pdfPage.drawImage(img, { x, y, width: w, height: hh });
+async function bakeSignaturesIntoPdf() {
+  const pdfDoc = await PDFLib.PDFDocument.load(sigState.pdfBytes);
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  const pdfPages = pdfDoc.getPages();
+  for (const ov of sigState.overlays) {
+    const info = sigState.pageInfo[ov.pageIdx];
+    const pdfPage = pdfPages[ov.pageIdx];
+    const pdfW = pdfPage.getWidth(), pdfH = pdfPage.getHeight();
+    const scaleX = pdfW / info.w, scaleY = pdfH / info.h;
+    const x = ov.el.offsetLeft * scaleX;
+    const w = ov.el.offsetWidth * scaleX;
+    const hh = ov.el.offsetHeight * scaleY;
+    const y = pdfH - (ov.el.offsetTop * scaleY) - hh;
+    if (ov.type === 'image') {
+      const b64 = ov.dataUrl.split(',')[1];
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const img = await pdfDoc.embedPng(bytes);
+      pdfPage.drawImage(img, { x, y, width: w, height: hh });
+    } else {
+      const fontSize = Math.max(12, hh * 0.55);
+      if (ov.isStamp) {
+        pdfPage.drawRectangle({ x, y, width: w, height: hh, borderColor: PDFLib.rgb(0.86, 0.15, 0.15), borderWidth: 2 });
+        const textW = font.widthOfTextAtSize(ov.text, fontSize);
+        pdfPage.drawText(ov.text, { x: x + (w - textW) / 2, y: y + (hh - fontSize) / 2 + 4, size: fontSize, font, color: PDFLib.rgb(0.86, 0.15, 0.15) });
       } else {
-        const fontSize = Math.max(12, hh * 0.55);
-        if (ov.isStamp) {
-          pdfPage.drawRectangle({ x, y, width: w, height: hh, borderColor: PDFLib.rgb(0.86, 0.15, 0.15), borderWidth: 2 });
-          const textW = font.widthOfTextAtSize(ov.text, fontSize);
-          pdfPage.drawText(ov.text, { x: x + (w - textW) / 2, y: y + (hh - fontSize) / 2 + 4, size: fontSize, font, color: PDFLib.rgb(0.86, 0.15, 0.15) });
-        } else {
-          pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: PDFLib.rgb(0.02, 0.31, 0.18) });
-        }
+        pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: PDFLib.rgb(0.02, 0.31, 0.18) });
       }
     }
-    const signedBytes = await pdfDoc.save();
+  }
+  return await pdfDoc.save();
+}
+
+async function saveSignatures() {
+  if (!sigState.overlays.length) return alert('Add at least one signature, text, or stamp before saving.');
+  const btn = document.getElementById('saveBtn'); btn.disabled = true; btn.querySelector('.ic').textContent = '⏳';
+  try {
+    const signedBytes = await bakeSignaturesIntoPdf();
     const signedPath = `${currentUser.id}/${Date.now()}-signed.pdf`;
     const up = await sb.storage.from('pgds-signed').upload(signedPath, signedBytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
+    // Delete previous working signed version if any
+    if (sigState.doc.signed_file_path) {
+      await sb.storage.from('pgds-signed').remove([sigState.doc.signed_file_path]);
+    }
     const upd = await sb.from('pgds_documents').update({
-      status: 'approved', signed_file_path: signedPath, signed_by: currentUser.id, signed_at: new Date().toISOString()
+      signed_file_path: signedPath, signed_by: currentUser.id
+    }).eq('id', sigState.doc.id);
+    if (upd.error) throw upd.error;
+    sigState.doc.signed_file_path = signedPath;
+    alert('Signatures saved. You can add more or Approve when done.');
+    // Reload the doc so the newly-baked signatures show as part of it
+    sigState.overlays = [];
+    updateOverlayList();
+    document.getElementById('modalDoc').innerHTML = '<p style="color:#fff">Reloading...</p>';
+    await loadDocForSigning();
+  } catch (err) {
+    alert('Error: ' + (err.message || err));
+  } finally {
+    const b = document.getElementById('saveBtn');
+    if (b) { b.disabled = false; b.querySelector('.ic').textContent = '💾'; }
+  }
+}
+
+async function approveDoc() {
+  const hasUnsaved = sigState.overlays.length > 0;
+  const hasSigned = !!sigState.doc.signed_file_path;
+  if (!hasSigned && !hasUnsaved) {
+    return alert('Please add at least one signature and Save before approving.');
+  }
+  let confirmMsg = 'Approve this document and move to the Approved folder?';
+  if (hasUnsaved) confirmMsg = 'You have unsaved signatures on the doc. Save AND approve now?';
+  if (!confirm(confirmMsg)) return;
+  const btn = document.getElementById('approveBtn'); btn.disabled = true; btn.querySelector('.ic').textContent = '⏳';
+  try {
+    // If there are pending overlays, bake them first
+    if (hasUnsaved) {
+      const signedBytes = await bakeSignaturesIntoPdf();
+      const signedPath = `${currentUser.id}/${Date.now()}-signed.pdf`;
+      const up = await sb.storage.from('pgds-signed').upload(signedPath, signedBytes, { contentType: 'application/pdf' });
+      if (up.error) throw up.error;
+      if (sigState.doc.signed_file_path) await sb.storage.from('pgds-signed').remove([sigState.doc.signed_file_path]);
+      sigState.doc.signed_file_path = signedPath;
+    }
+    const upd = await sb.from('pgds_documents').update({
+      status: 'approved',
+      signed_file_path: sigState.doc.signed_file_path,
+      signed_by: currentUser.id,
+      signed_at: new Date().toISOString()
     }).eq('id', sigState.doc.id);
     if (upd.error) throw upd.error;
     closeSigningModal();
     renderAdminView(); updateAdminCounts();
-    alert('Signed and approved!');
+    alert('Document approved and moved to the Approved folder.');
   } catch (err) {
     alert('Error: ' + (err.message || err));
-    btn.disabled = false; btn.textContent = '✓ Apply & Approve';
+    const b = document.getElementById('approveBtn');
+    if (b) { b.disabled = false; b.querySelector('.ic').textContent = '✅'; }
   }
 }
 
