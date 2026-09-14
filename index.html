@@ -212,7 +212,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7-signpad';
+const APP_VERSION = 'v7.1-view-signs';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -508,8 +508,8 @@ async function loadMyDocs() {
       <td>${ageBadge(age)}${d.signed_at ? `<div style="font-size:11px;color:var(--muted);">until signed</div>` : ''}</td>
       <td><span class="badge ${d.status}">${d.status}</span>${d.status==='rejected'&&d.reject_reason?`<div style="font-size:12px;color:#991b1b;margin-top:4px;">${h(d.reject_reason)}</div>`:''}</td>
       <td class="actions">
-        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadFile('pgds-signed','${d.signed_file_path}')">⬇️ Download</button>`:''}
-        ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ View</button>`:''}
+        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadFile('pgds-signed','${d.signed_file_path}')">⬇️ Download signed</button>`:''}
+        ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ Preview</button>`:''}
         ${d.status==='pending'?`<button class="danger" onclick="cancelDoc('${d.id}','${d.original_file_path}')">Cancel</button>`:''}
       </td>
     </tr>`; }).join('')}</tbody></table>`;
@@ -683,8 +683,7 @@ async function renderDocuments(el) {
       <td>${new Date(d.created_at).toLocaleString()}</td>
       <td>${ageBadge(age)}</td>
       <td class="actions">
-        <button class="secondary" onclick="viewAdminDoc('${d.status==='approved'&&d.signed_file_path?'pgds-signed':(d.status==='rejected'?'pgds-rejected':'pgds-pending')}','${d.status==='approved'&&d.signed_file_path?d.signed_file_path:d.original_file_path}')">👁️ View</button>
-        ${d.status==='pending'?`<button onclick="signDoc('${d.id}')">✍️ Sign</button>`:''}
+        ${d.status==='pending' ? `<button onclick="signDoc('${d.id}')">✍️ View & Sign</button>` : `<button class="secondary" onclick="viewAdminDoc('${d.status==='approved'&&d.signed_file_path?'pgds-signed':'pgds-rejected'}','${d.status==='approved'&&d.signed_file_path?d.signed_file_path:d.original_file_path}')">👁️ View</button>`}
         ${d.status==='pending'?`<button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>`:''}
       </td>
     </tr>`; }).join('')}</tbody></table>`;
@@ -942,10 +941,12 @@ async function openSigningModal() {
     <div class="modal-bottombar">
       <button class="modal-tool-btn" onclick="openSignaturePad()"><span class="ic">✍️</span>Signature</button>
       <button class="modal-tool-btn" onclick="showSavedPopover()"><span class="ic">📎</span>Saved</button>
+      <button class="modal-tool-btn" onclick="uploadSignatureImage()"><span class="ic">📤</span>Upload</button>
       <button class="modal-tool-btn" onclick="showTextPopover()"><span class="ic">🔤</span>Add Text</button>
       <button class="modal-tool-btn" onclick="showStampPopover()"><span class="ic">✅</span>Stamp</button>
-      <button class="modal-tool-btn primary" id="applyBtn" onclick="applySignatures()"><span class="ic">💾</span>Apply</button>
-    </div>`;
+      <button class="modal-tool-btn primary" id="applyBtn" onclick="applySignatures()"><span class="ic">💾</span>Save & Approve</button>
+    </div>
+    <input type="file" id="sigUploadInput" accept="image/png,image/jpeg" style="display:none;">`;
   document.body.appendChild(modal);
   await loadDocForSigning();
 }
@@ -996,6 +997,26 @@ function showStampPopover() {
     </select>
     <button onclick="addStampToDoc();closePopover();">Add to doc</button>`;
   document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+function uploadSignatureImage() {
+  const inp = document.getElementById('sigUploadInput');
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result;
+      addImageOverlay(dataUrl, 200, 70);
+      if (confirm('Also save this signature for reuse?')) {
+        const name = prompt('Name for this signature:', 'Uploaded ' + new Date().toLocaleDateString()) || 'Uploaded signature';
+        const { data } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl }).select().single();
+        if (data) sigState.mySignatures.unshift(data);
+      }
+      inp.value = '';
+    };
+    reader.readAsDataURL(f);
+  };
+  inp.click();
 }
 
 function showOverlaysList() {
