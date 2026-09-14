@@ -193,9 +193,14 @@
     .brand-text .title { font-size: 15px; }
     .brand-text .subtitle { font-size: 10px; }
     .user-info { font-size: 12px; }
-    .modal-side { width: 280px; }
     th, td { padding: 8px 10px; font-size: 12px; }
     .card { padding: 16px; }
+    .modal-tool-btn { min-width: 56px; padding: 6px 8px; font-size: 10px; }
+    .modal-tool-btn .ic { font-size: 18px; }
+    .modal-doc { padding: 12px 8px 100px; }
+    .sigpad-header { padding: 10px 12px; }
+    .sigpad-controls { gap: 10px; padding: 10px; }
+    .color-swatch { width: 30px; height: 30px; }
   }
 </style>
 </head>
@@ -212,7 +217,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7.1-view-signs';
+const APP_VERSION = 'v7.2-fit-place';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -1233,25 +1238,32 @@ function addImageOverlay(dataUrl, w, hh) {
   const id = 'ov-' + (++overlayIdCounter);
   const div = document.createElement('div');
   div.className = 'sig-overlay'; div.id = id;
-  div.style.left = '50px'; div.style.top = '50px'; div.style.width = w + 'px'; div.style.height = hh + 'px';
+  const pos = centerOfVisible(firstPage, w, hh);
+  div.style.left = pos.left + 'px'; div.style.top = pos.top + 'px';
+  div.style.width = w + 'px'; div.style.height = hh + 'px';
   div.innerHTML = `<img src="${dataUrl}"><span class="remove-handle" onclick="removeOverlay('${id}')">&times;</span><span class="resize-handle"></span>`;
   firstPage.appendChild(div);
   makeDraggable(div);
   sigState.overlays.push({ id, type: 'image', dataUrl, el: div, pageIdx: 0 });
   updateOverlayList();
+  setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
 function addTextOverlay(text, isStamp) {
   const firstPage = sigState.pages[0]; if (!firstPage) return alert('Document not ready.');
   const id = 'ov-' + (++overlayIdCounter);
   const div = document.createElement('div');
   div.className = 'sig-overlay'; div.id = id;
-  div.style.left = '50px'; div.style.top = '50px';
-  div.style.width = (isStamp ? 180 : text.length * 15) + 'px'; div.style.height = (isStamp ? 60 : 50) + 'px';
+  const w = isStamp ? 180 : Math.max(120, text.length * 15);
+  const hh = isStamp ? 60 : 50;
+  const pos = centerOfVisible(firstPage, w, hh);
+  div.style.left = pos.left + 'px'; div.style.top = pos.top + 'px';
+  div.style.width = w + 'px'; div.style.height = hh + 'px';
   div.innerHTML = `<div class="sig-text ${isStamp?'stamp':''}">${h(text)}</div><span class="remove-handle" onclick="removeOverlay('${id}')">&times;</span><span class="resize-handle"></span>`;
   firstPage.appendChild(div);
   makeDraggable(div);
   sigState.overlays.push({ id, type: 'text', text, isStamp, el: div, pageIdx: 0 });
   updateOverlayList();
+  setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
 function removeOverlay(id) {
   const ov = sigState.overlays.find(o => o.id === id);
@@ -1311,9 +1323,13 @@ async function loadDocForSigning() {
   sigState.pdfBytes = pdfBytes;
   const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
   modalDoc.innerHTML = ''; sigState.pages = []; sigState.pageInfo = [];
+  // Fit page to container width so the whole document is visible
+  const containerWidth = Math.max(320, modalDoc.clientWidth - 40);
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.3 });
+    const raw = page.getViewport({ scale: 1 });
+    const scale = Math.min(1.5, containerWidth / raw.width);
+    const viewport = page.getViewport({ scale });
     const wrap = document.createElement('div');
     wrap.className = 'pdf-page';
     wrap.style.width = viewport.width + 'px'; wrap.style.height = viewport.height + 'px';
@@ -1325,6 +1341,18 @@ async function loadDocForSigning() {
     sigState.pages.push(wrap);
     sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
   }
+}
+
+// Place an overlay at the currently visible center of the doc container
+function centerOfVisible(pageWrap, ovW, ovH) {
+  const container = document.getElementById('modalDoc');
+  const containerRect = container.getBoundingClientRect();
+  const pageRect = pageWrap.getBoundingClientRect();
+  const visCX = containerRect.left + containerRect.width / 2;
+  const visCY = containerRect.top + containerRect.height / 2;
+  const left = Math.max(10, Math.min(pageWrap.offsetWidth - ovW - 10, visCX - pageRect.left - ovW / 2));
+  const top = Math.max(10, Math.min(pageWrap.offsetHeight - ovH - 10, visCY - pageRect.top - ovH / 2));
+  return { left, top };
 }
 
 async function applySignatures() {
