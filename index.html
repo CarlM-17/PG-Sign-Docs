@@ -121,29 +121,57 @@
   .folder-body { display: none; padding: 0; }
   .folder-group.open .folder-body { display: block; }
   .folder-group.open .folder-head { border-bottom: 1px solid var(--border); }
-  /* Signing modal */
-  .modal { position: fixed; inset: 0; background: rgba(6,78,59,.9); z-index: 1000; display: flex; }
-  .modal-doc { flex: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  .modal-side { width: 340px; background: #fff; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-  .modal-side h3 { font-size: 14px; color: var(--green-900); margin: 0; }
-  .modal-close { position: absolute; top: 12px; right: 12px; background: #fff; border: none; width: 34px; height: 34px; border-radius: 17px; cursor: pointer; font-size: 20px; z-index: 1001; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  /* Signing modal - bottom toolbar */
+  .modal { position: fixed; inset: 0; background: rgba(6,78,59,.92); z-index: 1000; display: flex; flex-direction: column; }
+  .modal-topbar { background: var(--green-900); color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  .modal-topbar .title { font-size: 14px; font-weight: 700; }
+  .modal-topbar button { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; font-size: 12px; }
+  .modal-doc { flex: 1; overflow: auto; padding: 20px 20px 100px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .modal-bottombar { background: #fff; padding: 10px; display: flex; justify-content: center; gap: 8px; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); overflow-x: auto; }
+  .modal-tool-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; background: transparent; color: var(--green-900); border: 1px solid transparent; border-radius: 8px; font-size: 12px; font-weight: 600; min-width: 70px; cursor: pointer; }
+  .modal-tool-btn:hover { background: var(--green-50); }
+  .modal-tool-btn .ic { font-size: 22px; line-height: 1; }
+  .modal-tool-btn.primary { background: var(--green-700); color: #fff; }
+  .modal-tool-btn.primary:hover { background: var(--green-900); }
   .pdf-page { position: relative; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
   .pdf-page canvas { display: block; }
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
   .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
   .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: var(--red); border: 3px solid var(--red); border-radius: 6px; }
-  .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px; background: var(--green-700); border-radius: 9px; cursor: nwse-resize; }
-  .sig-overlay .remove-handle { position: absolute; left: -8px; top: -8px; width: 22px; height: 22px; background: var(--red); color: #fff; border-radius: 11px; text-align: center; line-height: 22px; cursor: pointer; font-size: 13px; }
+  .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 20px; height: 20px; background: var(--green-700); border-radius: 10px; cursor: nwse-resize; }
+  .sig-overlay .remove-handle { position: absolute; left: -8px; top: -8px; width: 24px; height: 24px; background: var(--red); color: #fff; border-radius: 12px; text-align: center; line-height: 24px; cursor: pointer; font-size: 14px; }
+  /* Signature Pad fullscreen */
+  .sigpad { position: fixed; inset: 0; background: #f8fafc; z-index: 2000; display: flex; flex-direction: column; }
+  .sigpad-header { background: linear-gradient(135deg, #2563eb, #1e40af); color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .sigpad-header .title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+  .sigpad-header .back { background: transparent; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 4px 10px; }
+  .sigpad-header .tools { display: flex; gap: 10px; align-items: center; }
+  .sigpad-header button { background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .sigpad-header button:hover { background: rgba(255,255,255,0.3); }
+  .sigpad-header button.save { background: #fff; color: #1e40af; }
+  .sigpad-header button.trash { background: rgba(220,38,38,0.9); border-color: transparent; padding: 8px 12px; }
+  .sigpad-canvas-wrap { flex: 1; padding: 20px; display: flex; align-items: center; justify-content: center; }
+  .sigpad-canvas { background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; height: 100%; max-height: 70vh; touch-action: none; cursor: crosshair; display: block; }
+  .sigpad-controls { background: #fff; padding: 12px 20px; display: flex; justify-content: center; gap: 18px; align-items: center; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); flex-wrap: wrap; }
+  .color-swatches { display: flex; gap: 8px; }
+  .color-swatch { width: 34px; height: 34px; border-radius: 17px; border: 3px solid transparent; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+  .color-swatch.active { border-color: #64748b; transform: scale(1.1); }
+  .pen-thickness { display: flex; gap: 6px; align-items: center; }
+  .pen-btn { background: #f1f5f9; border: 2px solid transparent; padding: 6px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .pen-btn.active { background: #dbeafe; border-color: #2563eb; color: #1e40af; }
+  .pen-btn .dot { display: inline-block; background: currentColor; border-radius: 50%; }
   .draw-canvas { border: 1px solid var(--border); border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
-  .tool-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-  .tool-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 12px; border-bottom: 2px solid transparent; font-weight: 600; color: var(--muted); }
-  .tool-tab.active { color: var(--green-700); border-color: var(--green-700); }
   .saved-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .saved-sig { border: 1px solid var(--border); border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; position: relative; background: #fff; }
   .saved-sig:hover { border-color: var(--green-700); }
   .saved-sig img { max-width: 100%; max-height: 40px; }
   .saved-sig .del { position: absolute; top: 2px; right: 4px; color: var(--red); font-size: 11px; cursor: pointer; font-weight: 700; }
+  /* Popover for saved / text / stamp picks from bottom bar */
+  .popover { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 1100; max-width: 92vw; width: 380px; max-height: 60vh; overflow-y: auto; }
+  .popover h4 { font-size: 14px; margin-bottom: 10px; color: var(--green-900); }
+  .popover-close { position: absolute; top: 8px; right: 10px; background: transparent; border: none; font-size: 18px; cursor: pointer; color: var(--muted); }
+  .popover-back { position: fixed; inset: 0; z-index: 1099; background: rgba(0,0,0,0.15); }
   /* Chart */
   .chart-box { background: var(--card); border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); margin-bottom: 20px; }
   .chart-box h3 { font-size: 14px; color: var(--green-900); margin-bottom: 12px; font-weight: 700; }
@@ -184,7 +212,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v6.1-darkgreen';
+const APP_VERSION = 'v7-signpad';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -817,24 +845,63 @@ async function renderSignaturesMgr(el) {
   initMgrCanvas();
 }
 
-let mgrCtx = null, mgrDrawing = false, mgrDrawn = false;
+let mgr = { ctx: null, canvas: null, drawing: false, drawn: false, lastMid: null, currentStroke: [], dpr: 1, color: '#1e40af', width: 3 };
 function initMgrCanvas() {
-  const c = document.getElementById('sigMgrCanvas');
-  mgrCtx = c.getContext('2d');
-  mgrCtx.strokeStyle = '#064e3b'; mgrCtx.lineWidth = 2.5; mgrCtx.lineCap = 'round';
-  mgrDrawn = false;
-  const start = (e) => { mgrDrawing = true; mgrDrawn = true; const p = getPt(e, c); mgrCtx.beginPath(); mgrCtx.moveTo(p.x, p.y); };
-  const move = (e) => { if (!mgrDrawing) return; const p = getPt(e, c); mgrCtx.lineTo(p.x, p.y); mgrCtx.stroke(); e.preventDefault(); };
-  const end = () => { mgrDrawing = false; };
-  c.onmousedown = start; c.onmousemove = move; c.onmouseup = end; c.onmouseleave = end;
-  c.ontouchstart = start; c.ontouchmove = move; c.ontouchend = end;
+  const canvas = document.getElementById('sigMgrCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  mgr = { ctx, canvas, drawing: false, drawn: false, lastMid: null, currentStroke: [], dpr, color: '#1e40af', width: 3 };
+  const getPos = (e) => { const r = canvas.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+  canvas.onmousedown = canvas.ontouchstart = (e) => { mgr.drawing = true; mgr.drawn = true; const p = getPos(e); mgr.currentStroke = [p]; mgr.lastMid = p; e.preventDefault(); };
+  canvas.onmousemove = canvas.ontouchmove = (e) => {
+    if (!mgr.drawing) return;
+    const p = getPos(e);
+    mgr.currentStroke.push(p);
+    const prev = mgr.currentStroke[mgr.currentStroke.length - 2];
+    if (prev) {
+      const mid = { x: (prev.x + p.x) / 2, y: (prev.y + p.y) / 2 };
+      ctx.strokeStyle = mgr.color; ctx.lineWidth = mgr.width;
+      ctx.beginPath(); ctx.moveTo(mgr.lastMid.x, mgr.lastMid.y);
+      ctx.quadraticCurveTo(prev.x, prev.y, mid.x, mid.y); ctx.stroke();
+      mgr.lastMid = mid;
+    }
+    e.preventDefault();
+  };
+  canvas.onmouseup = canvas.ontouchend = canvas.onmouseleave = () => {
+    if (!mgr.drawing) return;
+    mgr.drawing = false;
+    if (mgr.currentStroke.length >= 2) {
+      const last = mgr.currentStroke[mgr.currentStroke.length - 1];
+      ctx.beginPath(); ctx.moveTo(mgr.lastMid.x, mgr.lastMid.y); ctx.lineTo(last.x, last.y); ctx.stroke();
+    }
+    mgr.currentStroke = [];
+  };
 }
-function clearMgrCanvas() { const c = document.getElementById('sigMgrCanvas'); mgrCtx.clearRect(0,0,c.width,c.height); mgrDrawn = false; }
+function clearMgrCanvas() { if (mgr.ctx) { mgr.ctx.clearRect(0,0, mgr.canvas.width / mgr.dpr, mgr.canvas.height / mgr.dpr); mgr.drawn = false; } }
 async function saveMgrSig() {
-  if (!mgrDrawn) return alert('Please draw a signature first.');
+  if (!mgr.drawn) return alert('Please draw a signature first.');
   const name = document.getElementById('sigMgrName').value.trim() || 'Signature';
-  const c = document.getElementById('sigMgrCanvas');
-  const dataUrl = trimCanvas(c).toDataURL('image/png');
+  // Trim
+  const c = mgr.canvas;
+  const w = c.width, hh = c.height;
+  const px = c.getContext('2d').getImageData(0, 0, w, hh).data;
+  let top = hh, bottom = 0, left = w, right = 0;
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+    if (px[(y * w + x) * 4 + 3] > 0) {
+      if (y < top) top = y; if (y > bottom) bottom = y;
+      if (x < left) left = x; if (x > right) right = x;
+    }
+  }
+  const pad2 = 10;
+  const nw = right - left + pad2 * 2, nh = bottom - top + pad2 * 2;
+  const out = document.createElement('canvas'); out.width = nw; out.height = nh;
+  out.getContext('2d').drawImage(c, left - pad2, top - pad2, nw, nh, 0, 0, nw, nh);
+  const dataUrl = out.toDataURL('image/png');
   const { error } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl });
   if (error) return showMsg('msg', error.message, 'error');
   showMsg('msg', 'Signature saved.', 'success');
@@ -864,102 +931,241 @@ async function openSigningModal() {
   modal.className = 'modal';
   modal.id = 'sigModal';
   modal.innerHTML = `
-    <button class="modal-close" onclick="closeSigningModal()">&times;</button>
-    <div class="modal-doc" id="modalDoc"><p style="color:#fff">Loading document...</p></div>
-    <div class="modal-side">
-      <h3>Signing tools</h3>
-      <div style="font-size:12px;color:var(--muted);">${h(doc.title)}</div>
-      <div class="tool-tabs">
-        <div class="tool-tab active" data-tool="draw">Draw</div>
-        <div class="tool-tab" data-tool="saved">Saved</div>
-        <div class="tool-tab" data-tool="text">Type</div>
-        <div class="tool-tab" data-tool="stamp">Stamp</div>
+    <div class="modal-topbar">
+      <span class="title">✍️ ${h(doc.title)}</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="showOverlaysList()">Placed: <span id="overlayCount">0</span></button>
+        <button onclick="closeSigningModal()">Close</button>
       </div>
-      <div id="toolPanel"></div>
-      <hr style="margin:8px 0;border:none;border-top:1px solid var(--border)">
-      <h3>Placed items</h3>
-      <div id="overlayList" style="font-size:12px;color:var(--muted);">None yet - use tools above.</div>
-      <hr style="margin:8px 0;border:none;border-top:1px solid var(--border)">
-      <button id="applyBtn" onclick="applySignatures()">✓ Apply & Approve</button>
-      <button class="secondary" onclick="closeSigningModal()">Cancel</button>
+    </div>
+    <div class="modal-doc" id="modalDoc"><p style="color:#fff">Loading document...</p></div>
+    <div class="modal-bottombar">
+      <button class="modal-tool-btn" onclick="openSignaturePad()"><span class="ic">✍️</span>Signature</button>
+      <button class="modal-tool-btn" onclick="showSavedPopover()"><span class="ic">📎</span>Saved</button>
+      <button class="modal-tool-btn" onclick="showTextPopover()"><span class="ic">🔤</span>Add Text</button>
+      <button class="modal-tool-btn" onclick="showStampPopover()"><span class="ic">✅</span>Stamp</button>
+      <button class="modal-tool-btn primary" id="applyBtn" onclick="applySignatures()"><span class="ic">💾</span>Apply</button>
     </div>`;
   document.body.appendChild(modal);
-  modal.querySelectorAll('.tool-tab').forEach(t => t.onclick = () => {
-    modal.querySelectorAll('.tool-tab').forEach(x => x.classList.remove('active'));
-    t.classList.add('active'); renderToolPanel(t.dataset.tool);
-  });
-  renderToolPanel('draw');
   await loadDocForSigning();
 }
 
-function renderToolPanel(tool) {
-  const p = document.getElementById('toolPanel');
-  if (tool === 'draw') {
-    p.innerHTML = `
-      <p style="font-size:12px;color:var(--muted);">Draw with mouse or finger:</p>
-      <canvas id="drawCanvas" class="draw-canvas" width="300" height="120"></canvas>
-      <div style="display:flex;gap:6px;">
-        <button class="secondary" onclick="clearDraw()">Clear</button>
-        <button onclick="addDrawnToDoc()">Add to doc</button>
+function closePopover() {
+  document.querySelectorAll('.popover, .popover-back').forEach(e => e.remove());
+}
+
+function showSavedPopover() {
+  closePopover();
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Saved signatures</h4>
+    ${sigState.mySignatures.length ? `<div class="saved-sigs">
+      ${sigState.mySignatures.map(s => `<div class="saved-sig" onclick="addSavedToDoc('${s.id}');closePopover();">
+        <span class="del" onclick="event.stopPropagation();deleteSavedSig('${s.id}')">&times;</span>
+        <img src="${s.image_data}"><div style="font-size:11px;margin-top:4px;">${h(s.name)}</div>
+      </div>`).join('')}
+    </div>` : '<p style="font-size:13px;color:var(--muted);">No saved signatures yet. Tap Signature and save one from the pad.</p>'}`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+function showTextPopover() {
+  closePopover();
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Type a name</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Useful when staff forgot to write the signer's name.</p>
+    <input type="text" id="typedName" placeholder="e.g. C. M. Nemo" style="font-size:15px;margin-bottom:10px;">
+    <button onclick="addTypedToDoc();closePopover();">Add to doc</button>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+  setTimeout(() => document.getElementById('typedName').focus(), 50);
+}
+
+function showStampPopover() {
+  closePopover();
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Add approval stamp</h4>
+    <select id="stampText" style="margin-bottom:10px;">
+      <option>APPROVED</option><option>REVIEWED</option><option>PAID</option><option>RECEIVED</option>
+    </select>
+    <button onclick="addStampToDoc();closePopover();">Add to doc</button>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+function showOverlaysList() {
+  closePopover();
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Placed items on document</h4>
+    ${sigState.overlays.length ? sigState.overlays.map((o, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span>${i+1}. ${o.type === 'image' ? '✍️ Signature' : (o.isStamp ? '✅ Stamp: ' + o.text : '🔤 ' + o.text)}</span>
+      <span style="color:var(--red);cursor:pointer;font-weight:700;" onclick="removeOverlay('${o.id}');showOverlaysList();">Remove</span>
+    </div>`).join('') : '<p style="font-size:13px;color:var(--muted);">Nothing placed yet.</p>'}`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+// ---------- SIGNATURE PAD (fullscreen, landscape, smooth ink) ----------
+let pad = { ctx: null, canvas: null, strokes: [], currentStroke: [], drawing: false, color: '#1e40af', width: 3, lastMid: null, dpr: 1 };
+
+function openSignaturePad() {
+  const wrap = document.createElement('div');
+  wrap.id = 'sigPad';
+  wrap.className = 'sigpad';
+  wrap.innerHTML = `
+    <div class="sigpad-header">
+      <span class="title"><button class="back" onclick="closeSignaturePad()">←</button>Signature Pad</span>
+      <div class="tools">
+        <button class="trash" onclick="clearPad()" title="Clear">🗑 Clear</button>
+        <button class="save" onclick="savePadSignature()">SAVE SIGN</button>
       </div>
-      <label style="display:flex;gap:6px;align-items:center;font-size:12px;">
-        <input type="checkbox" id="saveDrawn" style="width:auto;"> Save this for reuse
+    </div>
+    <div class="sigpad-canvas-wrap"><canvas id="padCanvas" class="sigpad-canvas"></canvas></div>
+    <div class="sigpad-controls">
+      <div class="color-swatches" id="colorSwatches">
+        <div class="color-swatch active" style="background:#1e40af" onclick="setPadColor('#1e40af',this)"></div>
+        <div class="color-swatch" style="background:#0f172a" onclick="setPadColor('#0f172a',this)"></div>
+        <div class="color-swatch" style="background:#dc2626" onclick="setPadColor('#dc2626',this)"></div>
+        <div class="color-swatch" style="background:#064e3b" onclick="setPadColor('#064e3b',this)"></div>
+      </div>
+      <div class="pen-thickness">
+        <button class="pen-btn" onclick="setPadWidth(2,this)"><span class="dot" style="width:6px;height:6px;"></span>Thin</button>
+        <button class="pen-btn active" onclick="setPadWidth(3,this)"><span class="dot" style="width:9px;height:9px;"></span>Medium</button>
+        <button class="pen-btn" onclick="setPadWidth(5,this)"><span class="dot" style="width:13px;height:13px;"></span>Thick</button>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px;">
+        <input type="checkbox" id="padSaveReuse" style="width:auto;"> Save for reuse
       </label>
-      <input type="text" id="drawName" placeholder="Signature name" style="font-size:12px;">`;
-    initDrawCanvas();
-  } else if (tool === 'saved') {
-    p.innerHTML = sigState.mySignatures.length ? `
-      <p style="font-size:12px;color:var(--muted);">Click a signature to add:</p>
-      <div class="saved-sigs">
-        ${sigState.mySignatures.map(s => `<div class="saved-sig" onclick="addSavedToDoc('${s.id}')">
-          <span class="del" onclick="event.stopPropagation();deleteSavedSig('${s.id}')">&times;</span>
-          <img src="${s.image_data}"><div style="font-size:11px;margin-top:4px;">${h(s.name)}</div>
-        </div>`).join('')}
-      </div>` : '<p style="font-size:12px;color:var(--muted);">No saved signatures. Draw one first.</p>';
-  } else if (tool === 'text') {
-    p.innerHTML = `
-      <p style="font-size:12px;color:var(--muted);">Type a name (useful when staff forgot):</p>
-      <input type="text" id="typedName" placeholder="e.g. C. M. Nemo" style="font-size:14px;">
-      <button onclick="addTypedToDoc()">Add to doc</button>`;
-  } else if (tool === 'stamp') {
-    p.innerHTML = `
-      <p style="font-size:12px;color:var(--muted);">Add stamp:</p>
-      <select id="stampText">
-        <option>APPROVED</option><option>REVIEWED</option><option>PAID</option><option>RECEIVED</option>
-      </select>
-      <button onclick="addStampToDoc()">Add to doc</button>`;
-  }
+      <input type="text" id="padSaveName" placeholder="Signature name (if saving)" style="width:180px;font-size:13px;">
+    </div>`;
+  document.body.appendChild(wrap);
+  setTimeout(initPadCanvas, 50);
 }
 
-let drawCtx = null, drawing = false, drawnAny = false;
-function initDrawCanvas() {
-  const c = document.getElementById('drawCanvas');
-  drawCtx = c.getContext('2d');
-  drawCtx.strokeStyle = '#064e3b'; drawCtx.lineWidth = 2.5; drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
-  drawnAny = false;
-  const start = (e) => { drawing = true; drawnAny = true; const p = getPt(e, c); drawCtx.beginPath(); drawCtx.moveTo(p.x, p.y); };
-  const move = (e) => { if (!drawing) return; const p = getPt(e, c); drawCtx.lineTo(p.x, p.y); drawCtx.stroke(); e.preventDefault(); };
-  const end = () => { drawing = false; };
-  c.onmousedown = start; c.onmousemove = move; c.onmouseup = end; c.onmouseleave = end;
-  c.ontouchstart = start; c.ontouchmove = move; c.ontouchend = end;
-}
-function getPt(e, c) {
-  const r = c.getBoundingClientRect();
-  const t = e.touches ? e.touches[0] : e;
-  return { x: t.clientX - r.left, y: t.clientY - r.top };
-}
-function clearDraw() { const c = document.getElementById('drawCanvas'); drawCtx.clearRect(0,0,c.width,c.height); drawnAny = false; }
+function initPadCanvas() {
+  const canvas = document.getElementById('padCanvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  pad.ctx = ctx; pad.canvas = canvas; pad.strokes = []; pad.currentStroke = []; pad.dpr = dpr;
+  pad.lastMid = null;
 
-async function addDrawnToDoc() {
-  if (!drawnAny) return alert('Please draw a signature first.');
-  const c = document.getElementById('drawCanvas');
-  const dataUrl = trimCanvas(c).toDataURL('image/png');
-  addImageOverlay(dataUrl, 180, 60);
-  if (document.getElementById('saveDrawn').checked) {
-    const name = document.getElementById('drawName').value.trim() || 'Signature ' + (sigState.mySignatures.length + 1);
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+  const start = (e) => {
+    pad.drawing = true;
+    const p = getPos(e);
+    pad.currentStroke = [p];
+    pad.lastMid = p;
+    e.preventDefault();
+  };
+  const move = (e) => {
+    if (!pad.drawing) return;
+    const p = getPos(e);
+    pad.currentStroke.push(p);
+    // Draw quadratic curve using midpoints for smooth line
+    const prev = pad.currentStroke[pad.currentStroke.length - 2];
+    if (prev) {
+      const mid = { x: (prev.x + p.x) / 2, y: (prev.y + p.y) / 2 };
+      ctx.strokeStyle = pad.color;
+      ctx.lineWidth = pad.width;
+      ctx.beginPath();
+      ctx.moveTo(pad.lastMid.x, pad.lastMid.y);
+      ctx.quadraticCurveTo(prev.x, prev.y, mid.x, mid.y);
+      ctx.stroke();
+      pad.lastMid = mid;
+    }
+    e.preventDefault();
+  };
+  const end = (e) => {
+    if (!pad.drawing) return;
+    pad.drawing = false;
+    // Finalize by drawing to the last point
+    if (pad.currentStroke.length >= 2) {
+      const last = pad.currentStroke[pad.currentStroke.length - 1];
+      ctx.beginPath();
+      ctx.moveTo(pad.lastMid.x, pad.lastMid.y);
+      ctx.lineTo(last.x, last.y);
+      ctx.stroke();
+    }
+    pad.strokes.push({ points: pad.currentStroke, color: pad.color, width: pad.width });
+    pad.currentStroke = [];
+    if (e) e.preventDefault();
+  };
+  canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+function setPadColor(c, el) {
+  pad.color = c;
+  document.querySelectorAll('#colorSwatches .color-swatch').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+}
+function setPadWidth(w, el) {
+  pad.width = w;
+  document.querySelectorAll('.pen-btn').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function clearPad() {
+  if (!pad.ctx) return;
+  const c = pad.canvas;
+  pad.ctx.clearRect(0, 0, c.width / pad.dpr, c.height / pad.dpr);
+  pad.strokes = [];
+}
+
+function closeSignaturePad() {
+  const p = document.getElementById('sigPad'); if (p) p.remove();
+}
+
+async function savePadSignature() {
+  if (!pad.strokes.length) return alert('Draw your signature first.');
+  const trimmed = trimPadCanvas();
+  const dataUrl = trimmed.toDataURL('image/png');
+  // Add to current document
+  addImageOverlay(dataUrl, 200, 70);
+  // Save if requested
+  if (document.getElementById('padSaveReuse').checked) {
+    const name = document.getElementById('padSaveName').value.trim() || 'Signature ' + (sigState.mySignatures.length + 1);
     const { data } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl }).select().single();
     if (data) sigState.mySignatures.unshift(data);
   }
+  closeSignaturePad();
+}
+
+function trimPadCanvas() {
+  const c = pad.canvas;
+  const w = c.width, hh = c.height;
+  const ctx = c.getContext('2d');
+  const px = ctx.getImageData(0, 0, w, hh).data;
+  let top = hh, bottom = 0, left = w, right = 0;
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+    if (px[(y * w + x) * 4 + 3] > 0) {
+      if (y < top) top = y; if (y > bottom) bottom = y;
+      if (x < left) left = x; if (x > right) right = x;
+    }
+  }
+  if (right < left) { const empty = document.createElement('canvas'); empty.width = 200; empty.height = 60; return empty; }
+  const pad2 = 10;
+  const nw = right - left + pad2 * 2, nh = bottom - top + pad2 * 2;
+  const out = document.createElement('canvas'); out.width = nw; out.height = nh;
+  out.getContext('2d').drawImage(c, left - pad2, top - pad2, nw, nh, 0, 0, nw, nh);
+  return out;
 }
 
 function trimCanvas(c) {
@@ -1031,9 +1237,8 @@ function removeOverlay(id) {
   if (ov) { ov.el.remove(); sigState.overlays = sigState.overlays.filter(o => o.id !== id); updateOverlayList(); }
 }
 function updateOverlayList() {
-  const el = document.getElementById('overlayList');
-  if (!sigState.overlays.length) return el.innerHTML = 'None yet - use tools above.';
-  el.innerHTML = sigState.overlays.map((o, i) => `<div style="padding:4px 0;">${i+1}. ${o.type === 'image' ? 'Signature' : (o.isStamp ? 'Stamp: ' + o.text : 'Typed: ' + o.text)} <span style="color:var(--red);cursor:pointer" onclick="removeOverlay('${o.id}')">remove</span></div>`).join('');
+  const cnt = document.getElementById('overlayCount');
+  if (cnt) cnt.textContent = sigState.overlays.length;
 }
 
 function makeDraggable(el) {
