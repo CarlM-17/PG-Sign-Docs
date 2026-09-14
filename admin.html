@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PG Docs Sign - Admin</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="header">
+  <h1>PG Docs Sign - Admin</h1>
+  <div class="user-info">
+    <span id="userEmail"></span>
+    <button class="secondary" id="logoutBtn">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" data-view="pending-users">Pending Approvals <span id="pendingCount"></span></div>
+    <div class="tab" data-view="users">All Users</div>
+    <div class="tab" data-view="documents">Documents Queue <span id="docsCount"></span></div>
+    <div class="tab" data-view="signatures">My Signatures (soon)</div>
+  </div>
+
+  <div id="msg"></div>
+  <div id="content"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
