@@ -33,7 +33,77 @@ async function render() {
   if (currentView === 'pending-users') return renderPendingUsers(content);
   if (currentView === 'users') return renderAllUsers(content);
   if (currentView === 'documents') return renderDocuments(content);
+  if (currentView === 'stores') return renderStores(content);
   if (currentView === 'signatures') return content.innerHTML = '<p class="empty">Signature manager coming in Phase 3.</p>';
+}
+
+async function renderStores(el) {
+  el.innerHTML = `
+    <div class="upload-box" style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:20px;">
+      <h3 style="font-size:16px;margin-bottom:12px;">Add a new store</h3>
+      <form id="addStoreForm" style="display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:end;">
+        <div class="form-group" style="margin:0"><label>Store #</label><input type="text" id="newStoreNum" required placeholder="e.g. 32"></div>
+        <div class="form-group" style="margin:0"><label>Store name / branch</label><input type="text" id="newStoreName" required placeholder="e.g. SM Fairview Branch"></div>
+        <button type="submit">Add store</button>
+      </form>
+    </div>
+    <div id="storesBody"><p class="empty">Loading...</p></div>
+  `;
+  document.getElementById('addStoreForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const num = document.getElementById('newStoreNum').value.trim();
+    const name = document.getElementById('newStoreName').value.trim();
+    if (!num || !name) return;
+    const { error } = await sb.from('pgds_stores').insert({ store_number: num, store_name: name, created_by: currentUser.id });
+    if (error) return showMsg(error.message, 'error');
+    showMsg('Store added.', 'success');
+    renderStores(el);
+  });
+
+  const body = document.getElementById('storesBody');
+  const { data, error } = await sb.from('pgds_stores').select('*').order('store_number', { ascending: true });
+  if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return body.innerHTML = '<p class="empty">No stores yet. Add your first above.</p>';
+  body.innerHTML = `
+    <table><thead><tr>
+      <th>Store #</th><th>Store Name / Branch</th><th>Status</th><th>Added</th><th>Actions</th>
+    </tr></thead><tbody>
+      ${data.map(s => `
+        <tr>
+          <td><input type="text" style="width:80px" id="snum-${s.id}" value="${escapeHtml(s.store_number)}"></td>
+          <td><input type="text" style="width:100%" id="sname-${s.id}" value="${escapeHtml(s.store_name)}"></td>
+          <td><span class="badge ${s.active ? 'approved' : 'rejected'}">${s.active ? 'active' : 'inactive'}</span></td>
+          <td>${new Date(s.created_at).toLocaleDateString()}</td>
+          <td class="actions">
+            <button class="success" onclick="saveStore('${s.id}')">Save</button>
+            <button class="secondary" onclick="toggleStore('${s.id}', ${!s.active})">${s.active ? 'Deactivate' : 'Activate'}</button>
+            <button class="danger" onclick="deleteStore('${s.id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('')}
+    </tbody></table>
+  `;
+}
+
+async function saveStore(id) {
+  const num = document.getElementById(`snum-${id}`).value.trim();
+  const name = document.getElementById(`sname-${id}`).value.trim();
+  const { error } = await sb.from('pgds_stores').update({ store_number: num, store_name: name }).eq('id', id);
+  if (error) return showMsg(error.message, 'error');
+  showMsg('Store updated.', 'success');
+}
+async function toggleStore(id, active) {
+  const { error } = await sb.from('pgds_stores').update({ active }).eq('id', id);
+  if (error) return showMsg(error.message, 'error');
+  showMsg(`Store ${active ? 'activated' : 'deactivated'}.`, 'success');
+  render();
+}
+async function deleteStore(id) {
+  if (!confirm('Delete this store? Users already assigned to it will keep their store info.')) return;
+  const { error } = await sb.from('pgds_stores').delete().eq('id', id);
+  if (error) return showMsg(error.message, 'error');
+  showMsg('Store deleted.', 'success');
+  render();
 }
 
 async function renderPendingUsers(el) {
@@ -64,10 +134,10 @@ async function renderPendingUsers(el) {
 
 async function renderAllUsers(el) {
   el.innerHTML = '<p class="empty">Loading...</p>';
-  const { data, error } = await sb.from('pgds_profiles')
-    .select('*, approver:pgds_profiles!pgds_profiles_approved_by_fkey(full_name, email)')
-    .order('created_at', { ascending: false });
+  const { data, error } = await sb.from('pgds_profiles').select('*').order('created_at', { ascending: false });
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  const nameById = {};
+  data.forEach(u => { nameById[u.id] = u.full_name || u.email; });
   el.innerHTML = `
     <table><thead><tr>
       <th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th>
@@ -80,7 +150,7 @@ async function renderAllUsers(el) {
           <td>${escapeHtml(u.store_name || '-')}</td>
           <td><span class="badge ${u.role === 'admin' ? 'urgent' : 'normal'}">${u.role}</span></td>
           <td><span class="badge ${u.status}">${u.status}</span></td>
-          <td>${u.approver ? escapeHtml(u.approver.full_name || u.approver.email) : '-'}${u.approved_at ? `<div style="font-size:11px;color:#64748b;">${new Date(u.approved_at).toLocaleDateString()}</div>` : ''}</td>
+          <td>${u.approved_by && nameById[u.approved_by] ? escapeHtml(nameById[u.approved_by]) : '-'}${u.approved_at ? `<div style="font-size:11px;color:#64748b;">${new Date(u.approved_at).toLocaleDateString()}</div>` : ''}</td>
           <td class="actions">
             ${u.status !== 'approved' ? `<button class="success" onclick="approveUser('${u.id}', true)">Approve</button>` : ''}
             ${u.status !== 'rejected' && u.id !== currentUser.id ? `<button class="danger" onclick="rejectUser('${u.id}', true)">Reject</button>` : ''}
@@ -107,22 +177,29 @@ async function renderDocuments(el) {
 
   const body = el.querySelector('#docsBody');
   const { data, error } = await sb.from('pgds_documents')
-    .select('*, uploader:pgds_profiles!pgds_documents_uploader_id_fkey(full_name, email, store_number, store_name)')
+    .select('*')
     .eq('status', docsFilter)
     .order('urgency', { ascending: false })
     .order('created_at', { ascending: false });
   if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
   if (!data.length) return body.innerHTML = `<p class="empty">No ${docsFilter} documents.</p>`;
+  // Fetch uploader profiles separately
+  const uploaderIds = [...new Set(data.map(d => d.uploader_id))];
+  const profByIdMap = {};
+  if (uploaderIds.length) {
+    const { data: profs } = await sb.from('pgds_profiles').select('id, full_name, email, store_number, store_name').in('id', uploaderIds);
+    (profs || []).forEach(p => { profByIdMap[p.id] = p; });
+  }
   body.innerHTML = `
     <table><thead><tr>
       <th>Title</th><th>Uploader</th><th>Store #</th><th>Store Name</th><th>Urgency</th><th>Uploaded</th><th>Actions</th>
     </tr></thead><tbody>
-      ${data.map(d => `
+      ${data.map(d => { const up = profByIdMap[d.uploader_id] || {}; return `
         <tr>
           <td>${escapeHtml(d.title)}${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${escapeHtml(d.notes)}</div>` : ''}</td>
-          <td>${escapeHtml(d.uploader?.full_name || d.uploader?.email || '-')}</td>
-          <td>${escapeHtml(d.store_number || d.uploader?.store_number || '-')}</td>
-          <td>${escapeHtml(d.uploader?.store_name || '-')}</td>
+          <td>${escapeHtml(up.full_name || up.email || '-')}</td>
+          <td>${escapeHtml(d.store_number || up.store_number || '-')}</td>
+          <td>${escapeHtml(up.store_name || '-')}</td>
           <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
           <td>${new Date(d.created_at).toLocaleString()}</td>
           <td class="actions">
@@ -131,7 +208,7 @@ async function renderDocuments(el) {
             ${d.status === 'pending' ? `<button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>` : ''}
           </td>
         </tr>
-      `).join('')}
+      `; }).join('')}
     </tbody></table>
   `;
 }
