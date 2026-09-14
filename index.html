@@ -133,7 +133,8 @@
   .modal-tool-btn .ic { font-size: 22px; line-height: 1; }
   .modal-tool-btn.primary { background: var(--green-700); color: #fff; }
   .modal-tool-btn.primary:hover { background: var(--green-900); }
-  .pdf-page { position: relative; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+  .pdf-page-wrap { position: relative; margin: 0 auto; }
+  .pdf-page { position: relative; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); transform-origin: top left; will-change: transform; }
   .pdf-page canvas { display: block; }
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
@@ -217,7 +218,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7.3-save-approve';
+const APP_VERSION = 'v7.5-zoom';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -725,13 +726,30 @@ async function renderApprovedFolders(el) {
               <td>${h(up.full_name || up.email || '-')}</td>
               <td>${d.signed_at ? new Date(d.signed_at).toLocaleString() : '-'}</td>
               <td class="actions">
-                <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
-                <button onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">⬇️ Download</button>
+                <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">⬇️ Download</button>
+                <button onclick="signDoc('${d.id}')">✏️ Edit</button>
+                <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
               </td>
             </tr>`).join('')}
           </tbody></table>
         </div>
       </div>`).join('');
+}
+
+async function deleteApprovedDoc(id, originalPath, signedPath) {
+  if (!confirm('Delete this approved document PERMANENTLY? This cannot be undone.')) return;
+  try {
+    // remove files
+    const removePaths = [originalPath, signedPath].filter(Boolean);
+    for (const p of removePaths) {
+      const bucket = p === signedPath ? 'pgds-signed' : 'pgds-pending';
+      try { await sb.storage.from(bucket).remove([p]); } catch (e) {}
+    }
+    const { error } = await sb.from('pgds_documents').delete().eq('id', id);
+    if (error) throw error;
+    showMsg('msg', 'Document deleted.', 'success');
+    renderAdminView();
+  } catch (err) { alert('Delete failed: ' + (err.message || err)); }
 }
 
 async function viewAdminDoc(bucket, path) {
@@ -923,7 +941,8 @@ let sigState = { doc: null, pages: [], overlays: [], mySignatures: [], pdfBytes:
 async function signDoc(id) {
   const { data: docRow, error } = await sb.from('pgds_documents').select('*').eq('id', id).single();
   if (error) return alert(error.message);
-  sigState = { doc: docRow, pages: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
+  sigState = { doc: docRow, pages: [], pageWraps: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
+  window.pgdsZoom = 1;
   const { data: sigs } = await sb.from('pgds_signatures').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
   sigState.mySignatures = sigs || [];
   await openSigningModal();
@@ -937,8 +956,12 @@ async function openSigningModal() {
   modal.innerHTML = `
     <div class="modal-topbar">
       <span class="title">✍️ ${h(doc.title)}</span>
-      <div style="display:flex;gap:8px;">
-        <button onclick="showOverlaysList()">Placed: <span id="overlayCount">0</span></button>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="zoomOut()" title="Zoom out">➖</button>
+        <span id="zoomLabel" style="color:#fff;min-width:52px;text-align:center;font-size:12px;font-weight:600;">100%</span>
+        <button onclick="zoomIn()" title="Zoom in">➕</button>
+        <button onclick="zoomFit()" title="Fit to width">↔️ Fit</button>
+        <button onclick="showOverlaysList()">Items: <span id="overlayCount">0</span></button>
         <button onclick="closeSigningModal()">Close</button>
       </div>
     </div>
@@ -1235,34 +1258,34 @@ async function deleteSavedSig(id) {
 
 let overlayIdCounter = 0;
 function addImageOverlay(dataUrl, w, hh) {
-  const firstPage = sigState.pages[0]; if (!firstPage) return alert('Document not ready.');
+  if (!sigState.pages.length) return alert('Document not ready.');
+  const target = visiblePageAndPos(w, hh);
   const id = 'ov-' + (++overlayIdCounter);
   const div = document.createElement('div');
   div.className = 'sig-overlay'; div.id = id;
-  const pos = centerOfVisible(firstPage, w, hh);
-  div.style.left = pos.left + 'px'; div.style.top = pos.top + 'px';
+  div.style.left = target.left + 'px'; div.style.top = target.top + 'px';
   div.style.width = w + 'px'; div.style.height = hh + 'px';
   div.innerHTML = `<img src="${dataUrl}"><span class="remove-handle" onclick="removeOverlay('${id}')">&times;</span><span class="resize-handle"></span>`;
-  firstPage.appendChild(div);
+  target.pageWrap.appendChild(div);
   makeDraggable(div);
-  sigState.overlays.push({ id, type: 'image', dataUrl, el: div, pageIdx: 0 });
+  sigState.overlays.push({ id, type: 'image', dataUrl, el: div, pageIdx: target.pageIdx });
   updateOverlayList();
   setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
 function addTextOverlay(text, isStamp) {
-  const firstPage = sigState.pages[0]; if (!firstPage) return alert('Document not ready.');
+  if (!sigState.pages.length) return alert('Document not ready.');
+  const w = isStamp ? 180 : Math.max(120, text.length * 15);
+  const hh = isStamp ? 60 : 50;
+  const target = visiblePageAndPos(w, hh);
   const id = 'ov-' + (++overlayIdCounter);
   const div = document.createElement('div');
   div.className = 'sig-overlay'; div.id = id;
-  const w = isStamp ? 180 : Math.max(120, text.length * 15);
-  const hh = isStamp ? 60 : 50;
-  const pos = centerOfVisible(firstPage, w, hh);
-  div.style.left = pos.left + 'px'; div.style.top = pos.top + 'px';
+  div.style.left = target.left + 'px'; div.style.top = target.top + 'px';
   div.style.width = w + 'px'; div.style.height = hh + 'px';
   div.innerHTML = `<div class="sig-text ${isStamp?'stamp':''}">${h(text)}</div><span class="remove-handle" onclick="removeOverlay('${id}')">&times;</span><span class="resize-handle"></span>`;
-  firstPage.appendChild(div);
+  target.pageWrap.appendChild(div);
   makeDraggable(div);
-  sigState.overlays.push({ id, type: 'text', text, isStamp, el: div, pageIdx: 0 });
+  sigState.overlays.push({ id, type: 'text', text, isStamp, el: div, pageIdx: target.pageIdx });
   updateOverlayList();
   setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
@@ -1288,7 +1311,8 @@ function makeDraggable(el) {
   const move = (e) => {
     if (!dragging && !resizing) return;
     const t = e.touches ? e.touches[0] : e;
-    const dx = t.clientX - sx, dy = t.clientY - sy;
+    const z = window.pgdsZoom || 1;
+    const dx = (t.clientX - sx) / z, dy = (t.clientY - sy) / z;
     if (dragging) { el.style.left = (sl + dx) + 'px'; el.style.top = (st + dy) + 'px'; }
     else if (resizing) {
       const nw = Math.max(40, sw + dx), nh = Math.max(20, sh + dy);
@@ -1306,8 +1330,8 @@ function makeDraggable(el) {
 async function loadDocForSigning() {
   const doc = sigState.doc;
   const modalDoc = document.getElementById('modalDoc');
-  // If already partially signed (saved but not approved), load the working signed version
-  const useSigned = doc.signed_file_path && doc.status === 'pending';
+  // If there's already a signed version (saved partial or fully approved), load it
+  const useSigned = !!doc.signed_file_path;
   const bucket = useSigned ? 'pgds-signed' : 'pgds-pending';
   const path = useSigned ? doc.signed_file_path : doc.original_file_path;
   const { data: signed, error: se } = await sb.storage.from(bucket).createSignedUrl(path, 300);
@@ -1327,37 +1351,74 @@ async function loadDocForSigning() {
   }
   sigState.pdfBytes = pdfBytes;
   const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
-  modalDoc.innerHTML = ''; sigState.pages = []; sigState.pageInfo = [];
-  // Fit page to container width so the whole document is visible
+  modalDoc.innerHTML = ''; sigState.pages = []; sigState.pageInfo = []; sigState.pageWraps = [];
+  // Base fit-to-width scale
   const containerWidth = Math.max(320, modalDoc.clientWidth - 40);
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const raw = page.getViewport({ scale: 1 });
     const scale = Math.min(1.5, containerWidth / raw.width);
     const viewport = page.getViewport({ scale });
+    const sizer = document.createElement('div');
+    sizer.className = 'pdf-page-wrap';
+    sizer.style.width = viewport.width + 'px';
+    sizer.style.height = viewport.height + 'px';
     const wrap = document.createElement('div');
     wrap.className = 'pdf-page';
     wrap.style.width = viewport.width + 'px'; wrap.style.height = viewport.height + 'px';
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width; canvas.height = viewport.height;
     wrap.appendChild(canvas);
-    modalDoc.appendChild(wrap);
+    sizer.appendChild(wrap);
+    modalDoc.appendChild(sizer);
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
     sigState.pages.push(wrap);
+    sigState.pageWraps.push(sizer);
     sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
   }
+  applyZoom();
 }
 
-// Place an overlay at the currently visible center of the doc container
-function centerOfVisible(pageWrap, ovW, ovH) {
+// Zoom controls
+window.pgdsZoom = 1;
+function applyZoom() {
+  const z = window.pgdsZoom || 1;
+  const label = document.getElementById('zoomLabel');
+  if (label) label.textContent = Math.round(z * 100) + '%';
+  sigState.pages.forEach((page, i) => {
+    page.style.transform = `scale(${z})`;
+    const sizer = sigState.pageWraps[i];
+    if (sizer) {
+      sizer.style.width = (page.offsetWidth * z) + 'px';
+      sizer.style.height = (page.offsetHeight * z) + 'px';
+    }
+  });
+}
+function zoomIn() { window.pgdsZoom = Math.min(4, (window.pgdsZoom || 1) + 0.25); applyZoom(); }
+function zoomOut() { window.pgdsZoom = Math.max(0.5, (window.pgdsZoom || 1) - 0.25); applyZoom(); }
+function zoomFit() { window.pgdsZoom = 1; applyZoom(); }
+
+// Figure out which page is currently visible (center) and return its idx + placement position
+function visiblePageAndPos(ovW, ovH) {
   const container = document.getElementById('modalDoc');
   const containerRect = container.getBoundingClientRect();
+  const visCY = containerRect.top + containerRect.height / 2;
+  const z = window.pgdsZoom || 1;
+  let bestIdx = 0, bestDist = Infinity;
+  sigState.pages.forEach((p, i) => {
+    const r = p.getBoundingClientRect();
+    const pageCY = r.top + r.height / 2;
+    const dist = Math.abs(pageCY - visCY);
+    if (visCY >= r.top && visCY <= r.bottom) { bestIdx = i; bestDist = 0; }
+    else if (bestDist > 0 && dist < bestDist) { bestIdx = i; bestDist = dist; }
+  });
+  const pageWrap = sigState.pages[bestIdx];
   const pageRect = pageWrap.getBoundingClientRect();
   const visCX = containerRect.left + containerRect.width / 2;
-  const visCY = containerRect.top + containerRect.height / 2;
-  const left = Math.max(10, Math.min(pageWrap.offsetWidth - ovW - 10, visCX - pageRect.left - ovW / 2));
-  const top = Math.max(10, Math.min(pageWrap.offsetHeight - ovH - 10, visCY - pageRect.top - ovH / 2));
-  return { left, top };
+  // (visCenter - pageRect.left) is on-screen distance in scaled pixels; divide by zoom to get unscaled coords
+  const left = Math.max(10, Math.min(pageWrap.offsetWidth - ovW - 10, (visCX - pageRect.left) / z - ovW / 2));
+  const top = Math.max(10, Math.min(pageWrap.offsetHeight - ovH - 10, (visCY - pageRect.top) / z - ovH / 2));
+  return { pageIdx: bestIdx, pageWrap, left, top };
 }
 
 async function bakeSignaturesIntoPdf() {
@@ -1426,11 +1487,16 @@ async function saveSignatures() {
 async function approveDoc() {
   const hasUnsaved = sigState.overlays.length > 0;
   const hasSigned = !!sigState.doc.signed_file_path;
+  const alreadyApproved = sigState.doc.status === 'approved';
   if (!hasSigned && !hasUnsaved) {
     return alert('Please add at least one signature and Save before approving.');
   }
-  let confirmMsg = 'Approve this document and move to the Approved folder?';
-  if (hasUnsaved) confirmMsg = 'You have unsaved signatures on the doc. Save AND approve now?';
+  let confirmMsg = alreadyApproved
+    ? 'Save changes to this already-approved document?'
+    : 'Approve this document and move to the Approved folder?';
+  if (hasUnsaved) confirmMsg = alreadyApproved
+    ? 'You have new unsaved signatures. Save changes to this approved document?'
+    : 'You have unsaved signatures on the doc. Save AND approve now?';
   if (!confirm(confirmMsg)) return;
   const btn = document.getElementById('approveBtn'); btn.disabled = true; btn.querySelector('.ic').textContent = '⏳';
   try {
