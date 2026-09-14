@@ -111,6 +111,16 @@
   .actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .actions button { padding: 6px 12px; font-size: 12px; }
   .empty { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
+  /* Multi-store picker */
+  .store-picker { max-height: 210px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: 8px; padding: 6px; background: #fff; }
+  .store-picker::-webkit-scrollbar { width: 8px; }
+  .store-picker::-webkit-scrollbar-thumb { background: var(--green-700); border-radius: 4px; }
+  .store-opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .store-opt:hover { background: var(--green-50); }
+  .store-opt input { width: auto; margin: 0; flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--green-700); }
+  .store-opt span { color: var(--text); }
+  .store-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .store-chip { background: var(--green-100); color: var(--green-900); border: 1px solid var(--green-500); border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
   /* Remarks */
   .remarks-cell { min-width: 220px; max-width: 300px; }
   .remark-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; }
@@ -304,7 +314,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v9.5-delete';
+const APP_VERSION = 'v10-multistore';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -375,7 +385,24 @@ async function route() {
     return;
   }
   currentUser = { id: session.user.id, email: session.user.email, ...profile };
+  // Load every store this user is allowed to upload for
+  currentUser.stores = await loadMyStores(session.user.id, profile);
   if (profile.role === 'admin') renderAdmin(); else renderStaff();
+}
+
+async function loadMyStores(userId, profile) {
+  const { data } = await sb.from('pgds_user_stores')
+    .select('store_id, pgds_stores(id, store_number, store_name, active)')
+    .eq('user_id', userId);
+  const list = (data || [])
+    .map(r => r.pgds_stores)
+    .filter(s => s && s.active !== false)
+    .sort((a, b) => String(a.store_number).localeCompare(String(b.store_number), undefined, { numeric: true }));
+  // Fall back to the profile's single store if no assignments exist yet
+  if (!list.length && profile.store_number) {
+    return [{ id: null, store_number: profile.store_number, store_name: profile.store_name || '' }];
+  }
+  return list;
 }
 
 // ---------- AUTH ----------
@@ -394,9 +421,17 @@ async function renderAuth() {
         <form id="authForm">
           ${authMode === 'signup' ? `
             <div class="form-group"><label>Full name</label><input type="text" id="fullName" required placeholder="e.g. Juan Dela Cruz"></div>
-            <div class="form-group"><label>Select your store *</label><select id="storeSelect" required>
-              <option value="">-- Choose your store --</option>${storeOptions}
-            </select></div>
+            <div class="form-group">
+              <label>Select your store(s) *</label>
+              <p style="font-size:12px;color:var(--muted);margin:-2px 0 8px;">Tick every store you handle. You can pick more than one.</p>
+              <div class="store-picker" id="storePicker">
+                ${(stores.data || []).map(s => `
+                  <label class="store-opt">
+                    <input type="checkbox" value="${s.id}" data-num="${h(s.store_number)}" data-name="${h(s.store_name)}">
+                    <span>${h(s.store_number)} - ${h(s.store_name)}</span>
+                  </label>`).join('') || '<p style="font-size:13px;color:var(--muted);">No stores configured yet - ask the admin.</p>'}
+              </div>
+            </div>
           ` : ''}
           <div class="form-group"><label>Email</label><input type="email" id="email" required placeholder="you@example.com"></div>
           <div class="form-group"><label>Password</label><input type="password" id="password" required minlength="6" placeholder="At least 6 characters"></div>
@@ -420,13 +455,22 @@ async function handleAuth(e) {
   try {
     if (authMode === 'signup') {
       const fullName = document.getElementById('fullName').value.trim();
-      const sel = document.getElementById('storeSelect');
-      const opt = sel.selectedOptions[0];
-      if (!sel.value) throw new Error('Please select your store.');
+      const picked = Array.from(document.querySelectorAll('#storePicker input:checked'));
+      if (!picked.length) throw new Error('Please tick at least one store.');
       const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
       if (error) throw error;
-      if (data.user) await sb.from('pgds_profiles').update({ full_name: fullName, store_number: opt.dataset.num, store_name: opt.dataset.name }).eq('id', data.user.id);
-      showMsg('authMsg', 'Account created! Waiting for admin approval.', 'success');
+      if (data.user) {
+        // Primary store = the first one ticked (used for display)
+        await sb.from('pgds_profiles').update({
+          full_name: fullName,
+          store_number: picked[0].dataset.num,
+          store_name: picked[0].dataset.name
+        }).eq('id', data.user.id);
+        await sb.from('pgds_user_stores').insert(
+          picked.map(p => ({ user_id: data.user.id, store_id: p.value }))
+        );
+      }
+      showMsg('authMsg', `Account created for ${picked.length} store(s)! Waiting for admin approval.`, 'success');
     } else {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -528,7 +572,11 @@ function niceName() {
   return local.split(' ').filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ') || 'User';
 }
 function headerHTML(subtitle) {
-  const storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || '';
+  const st = currentUser.stores || [];
+  let storeLabel = '';
+  if (st.length > 1) storeLabel = `${st.length} stores: ` + st.map(s => s.store_number).join(', ');
+  else if (st.length === 1) storeLabel = `Store #${st[0].store_number} - ${st[0].store_name}`;
+  else storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || '';
   const uname = niceName();
   const personSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#f7e08a" style="filter:drop-shadow(0 1px 1px rgba(0,0,0,0.3));"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.5h19.6v-2.5c0-3.3-6.5-4.9-9.8-4.9z"/></svg>`;
   return `<div class="header">
@@ -605,6 +653,13 @@ async function renderStaff() {
         </div>
         <div id="uploadMsg"></div>
         <form id="uploadForm">
+          ${(currentUser.stores || []).length > 1 ? `
+          <div class="form-group">
+            <label>Which store is this document for? *</label>
+            <select id="docStore" required>
+              ${currentUser.stores.map((s, i) => `<option value="${i}">${h(s.store_number)} - ${h(s.store_name)}</option>`).join('')}
+            </select>
+          </div>` : ''}
           <div class="form-group"><label>Document title *</label><input type="text" id="docTitle" required placeholder="e.g. September expense report"></div>
           <div class="row2">
             <div class="form-group"><label>Urgency</label><select id="docUrgency">
@@ -738,8 +793,14 @@ async function handleUpload(e) {
     const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.pdf`;
     const up = await sb.storage.from('pgds-pending').upload(path, pdfBytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
+    // Which store did they pick? (single-store users just use their only one)
+    const stores = currentUser.stores || [];
+    const sel = document.getElementById('docStore');
+    const chosen = stores.length > 1 && sel ? stores[Number(sel.value)] : (stores[0] || null);
     const ins = await sb.from('pgds_documents').insert({
-      uploader_id: currentUser.id, store_number: currentUser.store_number,
+      uploader_id: currentUser.id,
+      store_number: chosen ? chosen.store_number : currentUser.store_number,
+      store_name: chosen ? chosen.store_name : currentUser.store_name,
       title, notes, urgency, original_file_path: path, status: 'pending'
     });
     if (ins.error) { await sb.storage.from('pgds-pending').remove([path]); throw ins.error; }
@@ -757,9 +818,11 @@ async function loadMyDocs() {
   const { data, error } = await sb.from('pgds_documents').select('*').eq('uploader_id', currentUser.id).eq('status', staffTab).order('created_at', { ascending: false });
   if (error) return list.innerHTML = `<div class="msg error">${error.message}</div>`;
   if (!data.length) return list.innerHTML = `<p class="empty">No ${staffTab} documents.</p>`;
-  list.innerHTML = `<table><thead><tr><th>Title</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  const multi = (currentUser.stores || []).length > 1;
+  list.innerHTML = `<table><thead><tr><th>Title</th>${multi ? '<th>Store</th>' : ''}<th>Urgency</th><th>Uploaded</th><th>Age</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     ${data.map(d => { const age = ageHours(d.created_at, d.signed_at); return `<tr>
       <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}${d.admin_remarks ? `<div class="staff-remark">📣 <strong>Message from signer:</strong><br>${h(d.admin_remarks)}</div>` : ''}</td>
+      ${multi ? `<td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>` : ''}
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
       <td>${ageBadge(age)}${d.signed_at ? `<div style="font-size:11px;color:var(--muted);">until signed</div>` : ''}</td>
@@ -968,16 +1031,39 @@ async function renderDashboard(el) {
     </div>`;
 }
 
+// Map of userId -> [{id, store_number, store_name}]
+async function fetchStoreAssignments(userIds) {
+  const map = {};
+  if (!userIds.length) return map;
+  const { data } = await sb.from('pgds_user_stores')
+    .select('user_id, pgds_stores(id, store_number, store_name)')
+    .in('user_id', userIds);
+  (data || []).forEach(r => {
+    if (!r.pgds_stores) return;
+    (map[r.user_id] = map[r.user_id] || []).push(r.pgds_stores);
+  });
+  Object.values(map).forEach(list => list.sort((a, b) => String(a.store_number).localeCompare(String(b.store_number), undefined, { numeric: true })));
+  return map;
+}
+
+function storeChips(list) {
+  if (!list || !list.length) return '<span style="color:var(--muted);font-size:12px;">none assigned</span>';
+  return list.map(s => `<span class="store-chip">${h(s.store_number)} - ${h(s.store_name)}</span>`).join('');
+}
+
 async function renderPendingUsers(el) {
   el.innerHTML = '<p class="empty">Loading...</p>';
   const { data, error } = await sb.from('pgds_profiles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
   if (!data.length) return el.innerHTML = '<p class="empty">No pending approvals.</p>';
-  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Signed up</th><th>Actions</th></tr></thead><tbody>
+  const assigns = await fetchStoreAssignments(data.map(u => u.id));
+  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Assigned stores</th><th>Signed up</th><th>Actions</th></tr></thead><tbody>
     ${data.map(u => `<tr>
       <td>${h(u.email)}</td><td>${h(u.full_name||'-')}</td>
-      <td><input type="text" style="width:80px" id="snum-${u.id}" value="${h(u.store_number||'')}"></td>
-      <td><input type="text" style="width:180px" id="sname-${u.id}" value="${h(u.store_name||'')}"></td>
+      <td>
+        <div class="store-chips">${storeChips(assigns[u.id])}</div>
+        <button class="secondary" style="margin-top:6px;padding:4px 10px;font-size:11px;" onclick="openStoreAssign('${u.id}')">✏️ Edit stores</button>
+      </td>
       <td>${new Date(u.created_at).toLocaleString()}</td>
       <td class="actions">
         <button onclick="approveUser('${u.id}')">Approve</button>
@@ -986,21 +1072,68 @@ async function renderPendingUsers(el) {
     </tr>`).join('')}</tbody></table>`;
 }
 
+// Dialog to assign stores to a user
+async function openStoreAssign(userId) {
+  closePopover();
+  const [{ data: allStores }, assigns] = await Promise.all([
+    sb.from('pgds_stores').select('*').eq('active', true).order('store_number', { ascending: true }),
+    fetchStoreAssignments([userId])
+  ]);
+  const mine = new Set((assigns[userId] || []).map(s => s.id));
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Assign stores</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Tick every store this person handles. They will choose which store each upload belongs to.</p>
+    <div class="store-picker" id="assignPicker">
+      ${(allStores || []).map(s => `
+        <label class="store-opt">
+          <input type="checkbox" value="${s.id}" data-num="${h(s.store_number)}" data-name="${h(s.store_name)}" ${mine.has(s.id) ? 'checked' : ''}>
+          <span>${h(s.store_number)} - ${h(s.store_name)}</span>
+        </label>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="saveStoreAssign('${userId}')">💾 Save stores</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+async function saveStoreAssign(userId) {
+  const picked = Array.from(document.querySelectorAll('#assignPicker input:checked'));
+  if (!picked.length) return toast('Tick at least one store.', 'warn');
+  try {
+    await sb.from('pgds_user_stores').delete().eq('user_id', userId);
+    const { error } = await sb.from('pgds_user_stores').insert(picked.map(p => ({ user_id: userId, store_id: p.value })));
+    if (error) throw error;
+    // Keep the profile's primary store in sync for display
+    await sb.from('pgds_profiles').update({
+      store_number: picked[0].dataset.num, store_name: picked[0].dataset.name
+    }).eq('id', userId);
+    closePopover();
+    toast(`✓ ${picked.length} store(s) assigned`);
+    renderAdminView();
+  } catch (err) { toast(err.message || err, 'error'); }
+}
+
 async function renderAllUsers(el) {
   el.innerHTML = '<p class="empty">Loading...</p>';
   const { data, error } = await sb.from('pgds_profiles').select('*').order('created_at', { ascending: false });
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
   const nameById = {}; data.forEach(u => nameById[u.id] = u.full_name || u.email);
-  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th></tr></thead><tbody>
+  const assigns = await fetchStoreAssignments(data.map(u => u.id));
+  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Assigned stores</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th></tr></thead><tbody>
     ${data.map(u => `<tr>
       <td>${h(u.email)}</td><td>${h(u.full_name||'-')}</td>
-      <td>${h(u.store_number||'-')}</td><td>${h(u.store_name||'-')}</td>
+      <td>${u.role === 'admin' ? '<span style="color:var(--muted);font-size:12px;">all stores</span>' : `<div class="store-chips">${storeChips(assigns[u.id])}</div>`}</td>
       <td><span class="badge ${u.role==='admin'?'urgent':'normal'}">${u.role}</span></td>
       <td><span class="badge ${u.status}">${u.status}</span></td>
       <td>${u.approved_by&&nameById[u.approved_by]?h(nameById[u.approved_by]):'-'}${u.approved_at?`<div style="font-size:11px;color:var(--muted);">${new Date(u.approved_at).toLocaleDateString()}</div>`:''}</td>
       <td class="actions">
-        ${u.status!=='approved'?`<button onclick="approveUser('${u.id}',true)">Approve</button>`:''}
-        ${u.status!=='rejected'&&u.id!==currentUser.id?`<button class="danger" onclick="rejectUser('${u.id}',true)">Reject</button>`:''}
+        ${u.role!=='admin'?`<button class="secondary" onclick="openStoreAssign('${u.id}')">✏️ Stores</button>`:''}
+        ${u.status!=='approved'?`<button onclick="approveUser('${u.id}')">Approve</button>`:''}
+        ${u.status!=='rejected'&&u.id!==currentUser.id?`<button class="danger" onclick="rejectUser('${u.id}')">Reject</button>`:''}
       </td>
     </tr>`).join('')}</tbody></table>`;
 }
@@ -1021,7 +1154,7 @@ async function renderPendingQueue(el) {
     ${data.map(d => { const up = profMap[d.uploader_id]||{}; const age = ageHours(d.created_at); return `<tr>
       <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${h(d.notes)}</div>`:''}${d.signed_file_path?`<div style="font-size:11px;color:#059669;margin-top:4px;">✓ Partially signed - open to continue</div>`:''}</td>
       <td>${h(up.full_name||up.email||'-')}</td>
-      <td>${h(d.store_number||up.store_number||'-')} - ${h(up.store_name||'')}</td>
+      <td>${h(d.store_number||up.store_number||'-')} - ${h(d.store_name||up.store_name||'')}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
       <td>${ageBadge(age)}</td>
@@ -1103,7 +1236,7 @@ async function renderRejected(el) {
     ${data.map(d => { const up = profMap[d.uploader_id]||{}; return `<tr>
       <td><strong>${h(d.title)}</strong></td>
       <td>${h(up.full_name||up.email||'-')}</td>
-      <td>${h(d.store_number||up.store_number||'-')} - ${h(up.store_name||'')}</td>
+      <td>${h(d.store_number||up.store_number||'-')} - ${h(d.store_name||up.store_name||'')}</td>
       <td style="color:#991b1b;">${h(d.reject_reason||'-')}</td>
       <td>${d.signed_at?new Date(d.signed_at).toLocaleString():'-'}</td>
       <td class="actions">
@@ -1127,7 +1260,7 @@ async function renderApprovedFolders(el) {
   const byStore = {};
   data.forEach(d => {
     const up = profMap[d.uploader_id] || {};
-    const key = `${d.store_number || up.store_number || '?'} - ${up.store_name || 'Unassigned'}`;
+    const key = `${d.store_number || up.store_number || '?'} - ${d.store_name || up.store_name || 'Unassigned'}`;
     (byStore[key] = byStore[key] || []).push({ d, up });
   });
   el.innerHTML = `<h3 style="margin-bottom:12px;color:var(--green-900);">📁 Approved documents by store</h3>` +
@@ -1187,13 +1320,17 @@ async function rejectDoc(id) {
 }
 
 async function approveUser(id) {
-  const numEl = document.getElementById(`snum-${id}`), nameEl = document.getElementById(`sname-${id}`);
-  const patch = { status: 'approved', approved_at: new Date().toISOString(), approved_by: currentUser.id };
-  if (numEl) patch.store_number = numEl.value.trim();
-  if (nameEl) patch.store_name = nameEl.value.trim();
-  const { error } = await sb.from('pgds_profiles').update(patch).eq('id', id);
-  if (error) return showMsg('msg', error.message, 'error');
-  showMsg('msg', 'User approved.', 'success');
+  // Make sure they have at least one store assigned before approving
+  const assigns = await fetchStoreAssignments([id]);
+  if (!assigns[id] || !assigns[id].length) {
+    toast('Assign at least one store first.', 'warn');
+    return openStoreAssign(id);
+  }
+  const { error } = await sb.from('pgds_profiles').update({
+    status: 'approved', approved_at: new Date().toISOString(), approved_by: currentUser.id
+  }).eq('id', id);
+  if (error) return toast(error.message, 'error');
+  toast('✓ User approved');
   renderAdminView(); updateAdminCounts();
 }
 
