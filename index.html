@@ -16,6 +16,7 @@
     --red:#dc2626; --amber:#f59e0b; --blue:#2563eb;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior-y: contain; overscroll-behavior-x: contain; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
   .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
   .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 12px; }
@@ -218,7 +219,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7.6-pinch';
+const APP_VERSION = 'v7.9-refresh';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -363,6 +364,7 @@ function headerHTML(subtitle) {
     <div class="user-info">
       <span class="name">${h(currentUser.full_name || currentUser.email)}</span>
       ${storeLabel ? `<span>${h(storeLabel)}</span>` : ''}
+      <button class="secondary" onclick="refreshApp()" title="Refresh">🔄 Refresh</button>
       <button class="secondary" onclick="logout()">Logout</button>
     </div>
   </div>`;
@@ -544,8 +546,9 @@ async function renderAdmin() {
         <div class="tab ${adminView==='dashboard'?'active':''}" data-v="dashboard">📊 Dashboard</div>
         <div class="tab ${adminView==='pending-users'?'active':''}" data-v="pending-users">Pending Users <span id="pendingCount"></span></div>
         <div class="tab ${adminView==='users'?'active':''}" data-v="users">All Users</div>
-        <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">Documents <span id="docsCount"></span></div>
-        <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved</div>
+        <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">📋 Signing Queue <span id="docsCount"></span></div>
+        <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved Docs</div>
+        <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
         <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
         <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
       </div>
@@ -571,8 +574,9 @@ async function renderAdminView() {
   if (adminView === 'dashboard') return renderDashboard(el);
   if (adminView === 'pending-users') return renderPendingUsers(el);
   if (adminView === 'users') return renderAllUsers(el);
-  if (adminView === 'documents') return renderDocuments(el);
+  if (adminView === 'documents') return renderPendingQueue(el);
   if (adminView === 'approved-folders') return renderApprovedFolders(el);
+  if (adminView === 'rejected') return renderRejected(el);
   if (adminView === 'stores') return renderStores(el);
   if (adminView === 'signatures') return renderSignaturesMgr(el);
 }
@@ -661,36 +665,53 @@ async function renderAllUsers(el) {
     </tr>`).join('')}</tbody></table>`;
 }
 
-async function renderDocuments(el) {
-  el.innerHTML = `
-    <div class="tabs" style="margin-bottom:16px">
-      <div class="tab ${docsFilter==='pending'?'active':''}" data-d="pending">Pending</div>
-      <div class="tab ${docsFilter==='approved'?'active':''}" data-d="approved">Approved</div>
-      <div class="tab ${docsFilter==='rejected'?'active':''}" data-d="rejected">Rejected</div>
-    </div>
-    <div id="docsBody"><p class="empty">Loading...</p></div>`;
-  el.querySelectorAll('.tab[data-d]').forEach(t => t.onclick = () => { docsFilter = t.dataset.d; renderDocuments(el); });
-  const body = document.getElementById('docsBody');
-  const { data, error } = await sb.from('pgds_documents').select('*').eq('status', docsFilter).order('urgency', { ascending: false }).order('created_at', { ascending: false });
-  if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
-  if (!data.length) return body.innerHTML = `<p class="empty">No ${docsFilter} documents.</p>`;
+async function renderPendingQueue(el) {
+  el.innerHTML = '<p class="empty">Loading signing queue...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*').eq('status', 'pending').order('urgency', { ascending: false }).order('created_at', { ascending: false });
+  if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return el.innerHTML = `<p class="empty">📭 No pending documents. All caught up!</p>`;
   const uids = [...new Set(data.map(d => d.uploader_id))];
   const profMap = {};
   if (uids.length) {
     const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
     (ps||[]).forEach(p => profMap[p.id] = p);
   }
-  body.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Actions</th></tr></thead><tbody>
-    ${data.map(d => { const up = profMap[d.uploader_id]||{}; const age = ageHours(d.created_at, d.signed_at); return `<tr>
-      <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${h(d.notes)}</div>`:''}</td>
+  el.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(d => { const up = profMap[d.uploader_id]||{}; const age = ageHours(d.created_at); return `<tr>
+      <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${h(d.notes)}</div>`:''}${d.signed_file_path?`<div style="font-size:11px;color:#059669;margin-top:4px;">✓ Partially signed - open to continue</div>`:''}</td>
       <td>${h(up.full_name||up.email||'-')}</td>
       <td>${h(d.store_number||up.store_number||'-')} - ${h(up.store_name||'')}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
       <td>${ageBadge(age)}</td>
       <td class="actions">
-        ${d.status==='pending' ? `<button onclick="signDoc('${d.id}')">✍️ View & Sign</button>` : `<button class="secondary" onclick="viewAdminDoc('${d.status==='approved'&&d.signed_file_path?'pgds-signed':'pgds-rejected'}','${d.status==='approved'&&d.signed_file_path?d.signed_file_path:d.original_file_path}')">👁️ View</button>`}
-        ${d.status==='pending'?`<button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>`:''}
+        <button onclick="signDoc('${d.id}')">✍️ View & Sign</button>
+        <button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>
+      </td>
+    </tr>`; }).join('')}</tbody></table>`;
+}
+
+async function renderRejected(el) {
+  el.innerHTML = '<p class="empty">Loading rejected...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*').eq('status', 'rejected').order('created_at', { ascending: false });
+  if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return el.innerHTML = `<p class="empty">No rejected documents.</p>`;
+  const uids = [...new Set(data.map(d => d.uploader_id))];
+  const profMap = {};
+  if (uids.length) {
+    const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
+    (ps||[]).forEach(p => profMap[p.id] = p);
+  }
+  el.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Reason</th><th>Rejected</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(d => { const up = profMap[d.uploader_id]||{}; return `<tr>
+      <td><strong>${h(d.title)}</strong></td>
+      <td>${h(up.full_name||up.email||'-')}</td>
+      <td>${h(d.store_number||up.store_number||'-')} - ${h(up.store_name||'')}</td>
+      <td style="color:#991b1b;">${h(d.reject_reason||'-')}</td>
+      <td>${d.signed_at?new Date(d.signed_at).toLocaleString():'-'}</td>
+      <td class="actions">
+        <button class="secondary" onclick="viewAdminDoc('pgds-pending','${d.original_file_path}')">👁️ View</button>
+        <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path||''}')">🗑 Delete</button>
       </td>
     </tr>`; }).join('')}</tbody></table>`;
 }
@@ -1563,6 +1584,7 @@ function closeSigningModal() {
 }
 
 async function logout() { await sb.auth.signOut(); currentUser = null; route(); }
+function refreshApp() { window.location.reload(); }
 
 route();
 </script>
