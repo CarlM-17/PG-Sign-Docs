@@ -1,3 +1,4 @@
+console.log('admin.js version v3 loaded');
 const { createClient } = supabase;
 const sb = createClient(window.PGDS_CONFIG.SUPABASE_URL, window.PGDS_CONFIG.SUPABASE_ANON_KEY);
 
