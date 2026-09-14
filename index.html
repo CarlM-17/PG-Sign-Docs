@@ -304,7 +304,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v9.2-guide';
+const APP_VERSION = 'v9.3-guide';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -457,7 +457,7 @@ function guideHTML() {
     <div class="guide-hero">
       <img src="/SignDocs_icon.png" alt="">
       <div>
-        <h2>Guide for Admin Staff</h2>
+        <h2>Admin Staff Guide</h2>
         <p>Document uploading standards - please read before submitting</p>
       </div>
     </div>
@@ -583,7 +583,7 @@ async function renderStaff() {
       <div class="container">
         <div class="tabs">
           <div class="tab" data-sv="docs">📄 My Documents</div>
-          <div class="tab active" data-sv="guide">📖 Guide for Admin Staff</div>
+          <div class="tab active" data-sv="guide">📖 Admin Staff Guide</div>
         </div>
         ${guideHTML()}
       </div>`;
@@ -595,7 +595,7 @@ async function renderStaff() {
     <div class="container">
       <div class="tabs">
         <div class="tab active" data-sv="docs">📄 My Documents</div>
-        <div class="tab" data-sv="guide">📖 Guide for Admin Staff</div>
+        <div class="tab" data-sv="guide">📖 Admin Staff Guide</div>
       </div>
       <div id="staffKpis" class="kpi-row"></div>
       <div class="box">
@@ -855,7 +855,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
         <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
         <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
-        <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Staff Guide</div>
+        <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Admin Staff Guide</div>
       </div>
       <div id="msg"></div>
       <div id="content"></div>
