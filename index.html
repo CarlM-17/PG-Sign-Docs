@@ -150,7 +150,7 @@
   .modal-tool-btn .ic { font-size: 22px; line-height: 1; }
   .modal-tool-btn.primary { background: var(--green-700); color: #fff; }
   .modal-tool-btn.primary:hover { background: var(--green-900); }
-  .pdf-page-wrap { position: relative; margin: 0 auto 40px; }
+  .pdf-page-wrap { position: relative; margin: 46px auto 40px; }
   .pdf-page { position: relative; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); transform-origin: top left; will-change: transform; }
   .pdf-page canvas { display: block; }
   .page-zoom-controls { position: absolute; top: -34px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; align-items: center; z-index: 5; }
@@ -161,9 +161,8 @@
   .page-num-btn:hover { background: #b58f1c !important; }
   /* Focus mode - hide other pages */
   .focus-mode .pdf-page-wrap { display: none; }
-  .focus-mode .pdf-page-wrap.focused { display: block; }
-  .focus-mode .pdf-page-wrap.focused { margin: 0 auto 40px; }
-  .focus-banner { position: sticky; top: 0; background: linear-gradient(90deg, var(--gold), #b58f1c); color: #1a1a1a; padding: 10px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; }
+  .focus-mode .pdf-page-wrap.focused { display: block; margin: 46px auto 40px; }
+  .focus-banner { position: sticky; top: 0; background: linear-gradient(90deg, var(--gold), #b58f1c); color: #1a1a1a; padding: 10px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; z-index: 30; box-shadow: 0 3px 10px rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 4px; width: 100%; max-width: 900px; }
   .focus-banner button { background: rgba(255,255,255,0.5); color: #1a1a1a; border: 1px solid rgba(0,0,0,0.2); padding: 6px 14px; font-weight: 700; }
   .focus-banner button:hover { background: rgba(255,255,255,0.8); }
   .page-navigator { background: rgba(255,255,255,0.95); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 90vw; }
@@ -261,7 +260,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8.7-instant-save';
+const APP_VERSION = 'v8.8-rotate';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -1494,6 +1493,15 @@ async function loadDocForSigning() {
     pdfBytes = await pdfDoc.save();
   }
   sigState.pdfBytes = pdfBytes;
+  await renderPdfPages(pdfBytes);
+  // Initialize per-page zoom map
+  sigState.pageZoom = new Array(sigState.pages.length).fill(1);
+  sigState.pages.forEach((_, i) => applyPageZoom(i));
+}
+
+// Render the given PDF bytes into the modal doc area (reused by rotate)
+async function renderPdfPages(pdfBytes) {
+  const modalDoc = document.getElementById('modalDoc');
   const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
   modalDoc.innerHTML = ''; sigState.pages = []; sigState.pageInfo = []; sigState.pageWraps = [];
   // Base fit-to-width scale
@@ -1516,6 +1524,7 @@ async function loadDocForSigning() {
       <button onclick="pageZoomOut(${pageIdx})">➖</button>
       <span class="page-zoom-badge">100%</span>
       <button onclick="pageZoomIn(${pageIdx})">➕</button>
+      <button onclick="rotatePage(${pageIdx})" title="Rotate 90°">🔄</button>
     `;
     sizer.appendChild(controls);
     const wrap = document.createElement('div');
@@ -1543,9 +1552,6 @@ async function loadDocForSigning() {
     `;
     modalDoc.insertBefore(nav, modalDoc.firstChild);
   }
-  // Initialize per-page zoom map + attach pinch per page
-  sigState.pageZoom = new Array(sigState.pages.length).fill(1);
-  sigState.pages.forEach((_, i) => applyPageZoom(i));
   sigState.pageWraps.forEach((sizer, i) => attachPinchZoomOnPage(sizer, i));
 }
 
@@ -1633,6 +1639,50 @@ function unfocusPages() {
 }
 function pageZoomIn(idx) { sigState.pageZoom[idx] = Math.min(4, pageZoom(idx) + 0.25); applyPageZoom(idx); }
 function pageZoomOut(idx) { sigState.pageZoom[idx] = Math.max(0.5, pageZoom(idx) - 0.25); applyPageZoom(idx); }
+
+// Rotate one page 90 deg clockwise by re-drawing its content rotated into a new page.
+// This bakes the rotation into the page content (no /Rotate flag), so all existing
+// screen-to-PDF coordinate math keeps working unchanged.
+async function rotatePage(idx) {
+  if (sigState.overlays.some(o => o.pageIdx === idx)) {
+    if (!confirm('You have unsaved items on this page. Rotating will remove them. Continue?')) return;
+    sigState.overlays.filter(o => o.pageIdx === idx).forEach(o => o.el.remove());
+    sigState.overlays = sigState.overlays.filter(o => o.pageIdx !== idx);
+    updateOverlayList();
+  }
+  const wasFocused = (typeof sigState.focusedPage === 'number') ? sigState.focusedPage : null;
+  const savedZoom = (sigState.pageZoom || []).slice();
+  toast('Rotating page...');
+  try {
+    const src = await PDFLib.PDFDocument.load(sigState.pdfBytes);
+    const out = await PDFLib.PDFDocument.create();
+    const count = src.getPageCount();
+    for (let i = 0; i < count; i++) {
+      const srcPage = src.getPage(i);
+      const w = srcPage.getWidth(), hgt = srcPage.getHeight();
+      const [embedded] = await out.embedPages([srcPage]);
+      if (i === idx) {
+        const newPage = out.addPage([hgt, w]);
+        newPage.drawPage(embedded, { x: 0, y: w, width: w, height: hgt, rotate: PDFLib.degrees(-90) });
+      } else {
+        const newPage = out.addPage([w, hgt]);
+        newPage.drawPage(embedded, { x: 0, y: 0, width: w, height: hgt });
+      }
+    }
+    sigState.pdfBytes = await out.save();
+    // Re-render from the rotated bytes
+    unfocusPages();
+    const modalDoc = document.getElementById('modalDoc');
+    modalDoc.classList.remove('focus-mode');
+    await renderPdfPages(sigState.pdfBytes);
+    sigState.pageZoom = sigState.pages.map((_, i) => savedZoom[i] || 1);
+    sigState.pages.forEach((_, i) => applyPageZoom(i));
+    if (wasFocused !== null && sigState.pages[wasFocused]) focusPage(wasFocused);
+    toast('✓ Page rotated');
+  } catch (err) {
+    toast('Rotate failed: ' + (err.message || err), 'error');
+  }
+}
 
 // Get zoom per page (defaults to 1)
 function pageZoom(idx) { return sigState.pageZoom && sigState.pageZoom[idx] || 1; }
