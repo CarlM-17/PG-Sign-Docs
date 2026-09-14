@@ -172,7 +172,14 @@
   .page-nav-buttons button { background: var(--green-100); color: var(--green-900); font-weight: 700; padding: 6px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--green-500); }
   .page-nav-buttons button:hover { background: var(--green-700); color: #fff; }
   .focus-mode .page-navigator { display: none; }
+  /* Toast */
+  .pgds-toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: var(--green-900); color: #fff; padding: 12px 22px; border-radius: 24px; font-size: 14px; font-weight: 600; z-index: 3000; box-shadow: 0 6px 20px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; animation: toastIn .25s ease; border: 1px solid var(--gold); }
+  .pgds-toast.error { background: #991b1b; border-color: #fca5a5; }
+  .pgds-toast.warn { background: #92400e; border-color: #fcd34d; }
+  .pgds-toast.hide { opacity: 0; transition: opacity .4s; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
+  .sig-overlay.locked { border: none; background: transparent; cursor: default; pointer-events: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
   .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
   .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: var(--red); border: 3px solid var(--red); border-radius: 6px; }
@@ -254,7 +261,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8.5-focus';
+const APP_VERSION = 'v8.7-instant-save';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -1173,15 +1180,10 @@ function uploadSignatureImage() {
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
     const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result;
-      addImageOverlay(dataUrl, 200, 70);
-      if (confirm('Also save this signature for reuse?')) {
-        const name = prompt('Name for this signature:', 'Uploaded ' + new Date().toLocaleDateString()) || 'Uploaded signature';
-        const { data } = await sb.from('pgds_signatures').insert({ owner_id: currentUser.id, name, image_data: dataUrl }).select().single();
-        if (data) sigState.mySignatures.unshift(data);
-      }
+    reader.onload = () => {
+      addImageOverlay(reader.result, 200, 70);
       inp.value = '';
+      toast('Signature added - drag to position, then tap Save');
     };
     reader.readAsDataURL(f);
   };
@@ -1324,7 +1326,7 @@ function closeSignaturePad() {
 }
 
 async function savePadSignature() {
-  if (!pad.strokes.length) return alert('Draw your signature first.');
+  if (!pad.strokes.length) return toast('Draw your signature first.', 'warn');
   const trimmed = trimPadCanvas();
   const dataUrl = trimmed.toDataURL('image/png');
   // Add to current document
@@ -1382,7 +1384,7 @@ function addSavedToDoc(id) {
 }
 function addTypedToDoc() {
   const t = document.getElementById('typedName').value.trim();
-  if (!t) return alert('Type a name first.');
+  if (!t) return toast('Type a name first.', 'warn');
   addTextOverlay(t, false);
 }
 function addStampToDoc() {
@@ -1398,7 +1400,7 @@ async function deleteSavedSig(id) {
 
 let overlayIdCounter = 0;
 function addImageOverlay(dataUrl, w, hh) {
-  if (!sigState.pages.length) return alert('Document not ready.');
+  if (!sigState.pages.length) return toast('Document not ready.', 'warn');
   const target = visiblePageAndPos(w, hh);
   const id = 'ov-' + (++overlayIdCounter);
   const div = document.createElement('div');
@@ -1413,7 +1415,7 @@ function addImageOverlay(dataUrl, w, hh) {
   setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
 function addTextOverlay(text, isStamp) {
-  if (!sigState.pages.length) return alert('Document not ready.');
+  if (!sigState.pages.length) return toast('Document not ready.', 'warn');
   const w = isStamp ? 180 : Math.max(120, text.length * 15);
   const hh = isStamp ? 60 : 50;
   const target = visiblePageAndPos(w, hh);
@@ -1624,9 +1626,8 @@ function focusPage(idx) {
 
 function unfocusPages() {
   const modalDoc = document.getElementById('modalDoc');
-  if (!modalDoc) return;
-  modalDoc.classList.remove('focus-mode');
-  sigState.pageWraps.forEach(sizer => sizer.classList.remove('focused'));
+  if (modalDoc) modalDoc.classList.remove('focus-mode');
+  (sigState.pageWraps || []).forEach(sizer => sizer.classList.remove('focused'));
   const banner = document.getElementById('focusBanner'); if (banner) banner.remove();
   sigState.focusedPage = null;
 }
@@ -1688,31 +1689,49 @@ async function bakeSignaturesIntoPdf() {
   return await pdfDoc.save();
 }
 
+function toast(message, type = 'success') {
+  document.querySelectorAll('.pgds-toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'pgds-toast ' + type;
+  t.textContent = message;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 400); }, 3000);
+}
+
+// Lock placed overlays in place visually (they are now baked into the PDF)
+function lockPlacedOverlays() {
+  sigState.overlays.forEach(ov => {
+    ov.el.classList.add('locked');
+    ov.el.onmousedown = null;
+    ov.el.ontouchstart = null;
+    const rh = ov.el.querySelector('.resize-handle'); if (rh) rh.remove();
+    const xh = ov.el.querySelector('.remove-handle'); if (xh) xh.remove();
+  });
+  sigState.overlays = [];
+  updateOverlayList();
+}
+
 async function saveSignatures() {
-  if (!sigState.overlays.length) return alert('Add at least one signature, text, or stamp before saving.');
+  if (!sigState.overlays.length) return toast('Add a signature, text, or stamp first.', 'warn');
   const btn = document.getElementById('saveBtn'); btn.disabled = true; btn.querySelector('.ic').textContent = '⏳';
   try {
     const signedBytes = await bakeSignaturesIntoPdf();
     const signedPath = `${currentUser.id}/${Date.now()}-signed.pdf`;
     const up = await sb.storage.from('pgds-signed').upload(signedPath, signedBytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
-    // Delete previous working signed version if any
-    if (sigState.doc.signed_file_path) {
-      await sb.storage.from('pgds-signed').remove([sigState.doc.signed_file_path]);
-    }
+    const prevPath = sigState.doc.signed_file_path;
     const upd = await sb.from('pgds_documents').update({
       signed_file_path: signedPath, signed_by: currentUser.id
     }).eq('id', sigState.doc.id);
     if (upd.error) throw upd.error;
+    if (prevPath) { try { await sb.storage.from('pgds-signed').remove([prevPath]); } catch (e) {} }
     sigState.doc.signed_file_path = signedPath;
-    alert('Signatures saved. You can add more or Approve when done.');
-    // Reload the doc so the newly-baked signatures show as part of it
-    sigState.overlays = [];
-    updateOverlayList();
-    document.getElementById('modalDoc').innerHTML = '<p style="color:#fff">Reloading...</p>';
-    await loadDocForSigning();
+    // Use the newly baked bytes as the base for any further signatures - no reload needed
+    sigState.pdfBytes = signedBytes;
+    lockPlacedOverlays();
+    toast('✓ Saved');
   } catch (err) {
-    alert('Error: ' + (err.message || err));
+    toast('Error: ' + (err.message || err), 'error');
   } finally {
     const b = document.getElementById('saveBtn');
     if (b) { b.disabled = false; b.querySelector('.ic').textContent = '💾'; }
@@ -1724,7 +1743,7 @@ async function approveDoc() {
   const hasSigned = !!sigState.doc.signed_file_path;
   const alreadyApproved = sigState.doc.status === 'approved';
   if (!hasSigned && !hasUnsaved) {
-    return alert('Please add at least one signature and Save before approving.');
+    return toast('Add a signature and Save before approving.', 'warn');
   }
   let confirmMsg = alreadyApproved
     ? 'Save changes to this already-approved document?'
@@ -1753,9 +1772,9 @@ async function approveDoc() {
     if (upd.error) throw upd.error;
     closeSigningModal();
     renderAdminView(); updateAdminCounts();
-    alert('Document approved and moved to the Approved folder.');
+    toast('Document approved and moved to the Approved folder.');
   } catch (err) {
-    alert('Error: ' + (err.message || err));
+    toast('Error: ' + (err.message || err), 'error');
     const b = document.getElementById('approveBtn');
     if (b) { b.disabled = false; b.querySelector('.ic').textContent = '✅'; }
   }
