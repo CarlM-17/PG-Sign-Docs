@@ -20,17 +20,23 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
   .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
   .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 12px; }
-  /* Corporate header - dark green */
-  .header { background: linear-gradient(180deg, var(--green-900) 0%, var(--green-700) 100%); border-bottom: 3px solid var(--gold); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(6,78,59,0.25); }
+  /* Corporate header - dark green, clean */
+  .header { background: linear-gradient(180deg, var(--green-900) 0%, var(--green-700) 100%); border-bottom: 3px solid var(--gold); padding: 12px 18px; box-shadow: 0 4px 12px rgba(6,78,59,0.25); position: relative; }
+  .header-row1 { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand img { width: 46px; height: 46px; border-radius: 23px; box-shadow: 0 2px 8px rgba(0,0,0,0.35); border: 2px solid var(--gold); background: #fff; object-fit: cover; }
-  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
-  .brand-text .title { font-size: 19px; font-weight: 800; color: #fff; letter-spacing: .3px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-  .brand-text .subtitle { font-size: 11px; color: var(--gold-light); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
-  .user-info { font-size: 13px; color: #fff; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .user-info .name { font-weight: 700; color: #fff; }
-  .user-info button { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
-  .user-info button:hover { background: rgba(255,255,255,0.25); }
+  .brand img { width: 48px; height: 48px; border-radius: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.35); border: 2px solid var(--gold); background: #fff; object-fit: cover; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-text .title { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .brand-text .subtitle { font-size: 11px; color: var(--gold-light); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+  .header-user { margin-top: 6px; padding-left: 60px; font-size: 13px; color: #fff; display: flex; flex-direction: column; gap: 1px; }
+  .header-user .uname { font-weight: 700; font-size: 14px; color: #fff; }
+  .header-user .ustore { font-size: 12px; color: var(--gold-light); font-weight: 600; }
+  .menu-btn { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 20px; padding: 0; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .menu-btn:hover { background: rgba(255,255,255,0.25); }
+  .menu-drop { position: absolute; top: 100%; right: 12px; margin-top: 6px; background: #fff; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); overflow: hidden; z-index: 100; min-width: 170px; border: 1px solid var(--border); }
+  .menu-drop button { display: flex; width: 100%; padding: 12px 16px; background: #fff; color: var(--text); border: none; text-align: left; font-size: 14px; align-items: center; gap: 10px; cursor: pointer; }
+  .menu-drop button:hover { background: var(--green-50); color: var(--green-900); }
+  .menu-drop hr { border: none; border-top: 1px solid var(--border); margin: 0; }
   /* Card */
   .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(6,78,59,0.06); border: 1px solid rgba(13,92,47,0.08); }
   .card h1 { font-size: 20px; margin-bottom: 6px; color: var(--green-900); }
@@ -219,7 +225,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7.9-refresh';
+const APP_VERSION = 'v8-header';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -353,21 +359,36 @@ async function handleAuth(e) {
 // ---------- STAFF ----------
 function headerHTML(subtitle) {
   const storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || '';
+  const uname = currentUser.full_name || currentUser.email;
   return `<div class="header">
-    <div class="brand">
-      <img src="/SignDocs_icon.png" alt="">
-      <div class="brand-text">
-        <span class="title">PG Docs Sign</span>
-        <span class="subtitle">${subtitle}</span>
+    <div class="header-row1">
+      <div class="brand">
+        <img src="/SignDocs_icon.png" alt="">
+        <div class="brand-text">
+          <span class="title">PG Docs Sign</span>
+          <span class="subtitle">${subtitle}</span>
+        </div>
       </div>
+      <button class="menu-btn" onclick="toggleMenu(event)" title="Menu">⋮</button>
     </div>
-    <div class="user-info">
-      <span class="name">${h(currentUser.full_name || currentUser.email)}</span>
-      ${storeLabel ? `<span>${h(storeLabel)}</span>` : ''}
-      <button class="secondary" onclick="refreshApp()" title="Refresh">🔄 Refresh</button>
-      <button class="secondary" onclick="logout()">Logout</button>
+    <div class="header-user">
+      <span class="uname">👤 ${h(uname)}</span>
+      ${storeLabel ? `<span class="ustore">${h(storeLabel)}</span>` : ''}
+    </div>
+    <div id="headerMenu" style="display:none;" class="menu-drop">
+      <button onclick="refreshApp()">🔄 Refresh</button>
+      <hr>
+      <button onclick="logout()">🚪 Logout</button>
     </div>
   </div>`;
+}
+function toggleMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById('headerMenu');
+  if (!m) return;
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  const close = (ev) => { if (!m.contains(ev.target) && !ev.target.classList.contains('menu-btn')) { m.style.display = 'none'; document.removeEventListener('click', close); } };
+  setTimeout(() => document.addEventListener('click', close), 10);
 }
 
 async function renderStaff() {
@@ -747,7 +768,7 @@ async function renderApprovedFolders(el) {
               <td>${h(up.full_name || up.email || '-')}</td>
               <td>${d.signed_at ? new Date(d.signed_at).toLocaleString() : '-'}</td>
               <td class="actions">
-                <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">⬇️ Download</button>
+                <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
                 <button onclick="signDoc('${d.id}')">✏️ Edit</button>
                 <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
               </td>
