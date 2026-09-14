@@ -318,7 +318,20 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v10.2-store-requests';
+const APP_VERSION = 'v10.3-tabfocus';
+
+// Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
+function centerActiveTabs() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.tabs').forEach(bar => {
+      const active = bar.querySelector('.tab.active');
+      if (!active) return;
+      const barRect = bar.getBoundingClientRect();
+      const tabRect = active.getBoundingClientRect();
+      bar.scrollLeft += (tabRect.left - barRect.left) - (barRect.width - tabRect.width) / 2;
+    });
+  });
+}
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -650,6 +663,7 @@ async function renderStaff() {
         ${guideHTML()}
       </div>`;
     document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+    centerActiveTabs();
     return;
   }
   app.innerHTML = `
@@ -711,6 +725,7 @@ async function renderStaff() {
       <div id="docList"></div>
     </div>`;
   document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+    centerActiveTabs();
   document.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStaff(); });
   document.getElementById('fileInput').onchange = handleFilePick;
   document.getElementById('cameraInput').onchange = handleFilePick;
@@ -1063,6 +1078,7 @@ async function renderAdmin() {
       <div id="content"></div>
     </div>`;
   document.querySelectorAll('.tab[data-v]').forEach(t => t.onclick = () => { adminView = t.dataset.v; renderAdmin(); });
+  centerActiveTabs();
   renderAdminView();
   updateAdminCounts();
 }
@@ -1076,6 +1092,7 @@ async function updateAdminCounts() {
   const dc = document.getElementById('docsCount'); if (dc) dc.textContent = pd ? `(${pd})` : '';
   const { count: sr } = await sb.from('pgds_store_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
   const sc = document.getElementById('storeReqCount'); if (sc) sc.textContent = sr ? `(${sr})` : '';
+  centerActiveTabs();
 }
 
 async function renderAdminView() {
