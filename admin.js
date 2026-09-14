@@ -43,13 +43,14 @@ async function renderPendingUsers(el) {
   if (!data.length) return el.innerHTML = '<p class="empty">No pending approvals.</p>';
   el.innerHTML = `
     <table><thead><tr>
-      <th>Email</th><th>Full Name</th><th>Store #</th><th>Signed up</th><th>Actions</th>
+      <th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Signed up</th><th>Actions</th>
     </tr></thead><tbody>
       ${data.map(u => `
         <tr id="row-${u.id}">
           <td>${escapeHtml(u.email)}</td>
           <td>${escapeHtml(u.full_name || '-')}</td>
-          <td><input type="text" style="width:100px" id="store-${u.id}" value="${escapeHtml(u.store_number || '')}" placeholder="Store #"></td>
+          <td><input type="text" style="width:80px" id="store-${u.id}" value="${escapeHtml(u.store_number || '')}" placeholder="#"></td>
+          <td><input type="text" style="width:180px" id="storename-${u.id}" value="${escapeHtml(u.store_name || '')}" placeholder="Store name"></td>
           <td>${new Date(u.created_at).toLocaleString()}</td>
           <td class="actions">
             <button class="success" onclick="approveUser('${u.id}')">Approve</button>
@@ -63,19 +64,23 @@ async function renderPendingUsers(el) {
 
 async function renderAllUsers(el) {
   el.innerHTML = '<p class="empty">Loading...</p>';
-  const { data, error } = await sb.from('pgds_profiles').select('*').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('pgds_profiles')
+    .select('*, approver:pgds_profiles!pgds_profiles_approved_by_fkey(full_name, email)')
+    .order('created_at', { ascending: false });
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
   el.innerHTML = `
     <table><thead><tr>
-      <th>Email</th><th>Full Name</th><th>Store #</th><th>Role</th><th>Status</th><th>Actions</th>
+      <th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th>
     </tr></thead><tbody>
       ${data.map(u => `
         <tr>
           <td>${escapeHtml(u.email)}</td>
           <td>${escapeHtml(u.full_name || '-')}</td>
           <td>${escapeHtml(u.store_number || '-')}</td>
+          <td>${escapeHtml(u.store_name || '-')}</td>
           <td><span class="badge ${u.role === 'admin' ? 'urgent' : 'normal'}">${u.role}</span></td>
           <td><span class="badge ${u.status}">${u.status}</span></td>
+          <td>${u.approver ? escapeHtml(u.approver.full_name || u.approver.email) : '-'}${u.approved_at ? `<div style="font-size:11px;color:#64748b;">${new Date(u.approved_at).toLocaleDateString()}</div>` : ''}</td>
           <td class="actions">
             ${u.status !== 'approved' ? `<button class="success" onclick="approveUser('${u.id}', true)">Approve</button>` : ''}
             ${u.status !== 'rejected' && u.id !== currentUser.id ? `<button class="danger" onclick="rejectUser('${u.id}', true)">Reject</button>` : ''}
@@ -102,7 +107,7 @@ async function renderDocuments(el) {
 
   const body = el.querySelector('#docsBody');
   const { data, error } = await sb.from('pgds_documents')
-    .select('*, uploader:pgds_profiles!pgds_documents_uploader_id_fkey(full_name, email, store_number)')
+    .select('*, uploader:pgds_profiles!pgds_documents_uploader_id_fkey(full_name, email, store_number, store_name)')
     .eq('status', docsFilter)
     .order('urgency', { ascending: false })
     .order('created_at', { ascending: false });
@@ -110,13 +115,14 @@ async function renderDocuments(el) {
   if (!data.length) return body.innerHTML = `<p class="empty">No ${docsFilter} documents.</p>`;
   body.innerHTML = `
     <table><thead><tr>
-      <th>Title</th><th>Uploader</th><th>Store #</th><th>Urgency</th><th>Uploaded</th><th>Actions</th>
+      <th>Title</th><th>Uploader</th><th>Store #</th><th>Store Name</th><th>Urgency</th><th>Uploaded</th><th>Actions</th>
     </tr></thead><tbody>
       ${data.map(d => `
         <tr>
           <td>${escapeHtml(d.title)}${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${escapeHtml(d.notes)}</div>` : ''}</td>
           <td>${escapeHtml(d.uploader?.full_name || d.uploader?.email || '-')}</td>
           <td>${escapeHtml(d.store_number || d.uploader?.store_number || '-')}</td>
+          <td>${escapeHtml(d.uploader?.store_name || '-')}</td>
           <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
           <td>${new Date(d.created_at).toLocaleString()}</td>
           <td class="actions">
@@ -154,9 +160,10 @@ async function rejectDoc(id) {
 
 async function approveUser(id, fromAllView = false) {
   const storeInput = document.getElementById(`store-${id}`);
-  const storeNumber = storeInput ? storeInput.value.trim() : null;
+  const storeNameInput = document.getElementById(`storename-${id}`);
   const patch = { status: 'approved', approved_at: new Date().toISOString(), approved_by: currentUser.id };
-  if (storeNumber) patch.store_number = storeNumber;
+  if (storeInput) patch.store_number = storeInput.value.trim();
+  if (storeNameInput) patch.store_name = storeNameInput.value.trim();
   const { error } = await sb.from('pgds_profiles').update(patch).eq('id', id);
   if (error) return showMsg(error.message, 'error');
   showMsg('User approved.', 'success');

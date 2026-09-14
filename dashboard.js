@@ -15,7 +15,8 @@ async function init() {
   }
   if (profile.role === 'admin') return (window.location.href = '/admin.html');
   currentUser = { ...session.user, profile };
-  document.getElementById('userEmail').textContent = `${profile.full_name || profile.email} (${profile.store_number || 'no store'})`;
+  const storeLabel = [profile.store_number && `Store #${profile.store_number}`, profile.store_name].filter(Boolean).join(' - ') || 'no store';
+  document.getElementById('userEmail').textContent = `${profile.full_name || profile.email} - ${storeLabel}`;
   loadDocs();
 }
 
