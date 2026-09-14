@@ -1,0 +1,6 @@
+{
+  "name": "pg-docs-sign",
+  "version": "1.0.0",
+  "description": "PG Docs Sign - single-page digital signature app for 31 stores",
+  "private": true
+}

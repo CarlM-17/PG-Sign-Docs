@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PG Docs Sign</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1f2937; min-height: 100vh; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .card { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); width: 100%; max-width: 460px; }
+  .card h1 { font-size: 22px; margin-bottom: 6px; color: #0f172a; }
+  .card .subtitle { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #374151; }
+  input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  button, .btn { background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  button.secondary { background: #e5e7eb; color: #1f2937; }
+  button.secondary:hover { background: #d1d5db; }
+  button.danger { background: #dc2626; }
+  button.danger:hover { background: #b91c1c; }
+  button.success { background: #059669; }
+  button.success:hover { background: #047857; }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-full { width: 100%; }
+  .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .msg.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .msg.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .msg.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .link { color: #2563eb; text-decoration: none; font-size: 13px; cursor: pointer; }
+  .link:hover { text-decoration: underline; }
+  .header { background: #fff; padding: 14px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; color: #0f172a; }
+  .header .user-info { font-size: 13px; color: #64748b; display: flex; gap: 12px; align-items: center; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px; overflow-x: auto; }
+  .tab { padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 14px; color: #64748b; white-space: nowrap; }
+  .tab.active { color: #2563eb; border-color: #2563eb; font-weight: 500; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  th, td { padding: 12px 14px; text-align: left; font-size: 14px; }
+  th { background: #f9fafb; color: #374151; font-weight: 600; font-size: 13px; }
+  tr { border-top: 1px solid #f1f5f9; }
+  tr:hover td { background: #fafbfc; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .badge.pending { background: #fef3c7; color: #92400e; }
+  .badge.approved { background: #d1fae5; color: #065f46; }
+  .badge.rejected { background: #fee2e2; color: #991b1b; }
+  .badge.urgent { background: #fee2e2; color: #991b1b; }
+  .badge.high { background: #ffedd5; color: #9a3412; }
+  .badge.normal { background: #dbeafe; color: #1e40af; }
+  .badge.low { background: #f3f4f6; color: #374151; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .actions button { padding: 6px 12px; font-size: 12px; }
+  .empty { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
+  .box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
+  .box h3 { font-size: 16px; margin-bottom: 12px; color: #0f172a; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .file-drop { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 24px; text-align: center; color: #64748b; cursor: pointer; }
+  .file-drop:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+  .file-drop.has-file { border-color: #059669; color: #065f46; background: #f0fdf4; }
+  #fileInput { display: none; }
+  textarea { min-height: 60px; resize: vertical; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
+const MAX_FILE_MB = 5;
+const APP_VERSION = 'v4-single-file';
+console.log('PG Docs Sign', APP_VERSION);
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const app = document.getElementById('app');
+let currentUser = null;
+let authMode = 'login';
+let adminView = 'pending-users';
+let docsFilter = 'pending';
+let staffTab = 'pending';
+
+function h(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showMsg(id, text, type = 'info') {
+  const el = document.getElementById(id);
+  if (el) { el.innerHTML = `<div class="msg ${type}">${text}</div>`; setTimeout(() => el.innerHTML = '', 5000); }
+}
+
+// ---------- ROUTER ----------
+async function route() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { authMode = 'login'; return renderAuth(); }
+  const { data: profile } = await sb.from('pgds_profiles').select('*').eq('id', session.user.id).single();
+  if (!profile) { await sb.auth.signOut(); return renderAuth(); }
+  if (profile.status !== 'approved') {
+    await sb.auth.signOut();
+    authMode = 'login';
+    renderAuth();
+    showMsg('authMsg', profile.status === 'rejected' ? 'Your account was not approved. Reason: ' + (profile.reject_reason || 'not specified') : 'Your account is still awaiting admin approval.', profile.status === 'rejected' ? 'error' : 'info');
+    return;
+  }
+  currentUser = { id: session.user.id, email: session.user.email, ...profile };
+  if (profile.role === 'admin') renderAdmin();
+  else renderStaff();
+}
+
+// ---------- AUTH SCREEN ----------
+async function renderAuth() {
+  const stores = await sb.from('pgds_stores').select('*').eq('active', true).order('store_number', { ascending: true });
+  const storeOptions = (stores.data || []).map(s => `<option value="${s.id}" data-num="${h(s.store_number)}" data-name="${h(s.store_name)}">${h(s.store_number)} - ${h(s.store_name)}</option>`).join('');
+  app.innerHTML = `
+    <div class="center">
+      <div class="card">
+        <h1>${authMode === 'signup' ? 'Create your account' : 'Sign in to PG Docs Sign'}</h1>
+        <p class="subtitle">${authMode === 'signup' ? 'After signup you must be approved by the admin.' : 'Enter your credentials to continue.'}</p>
+        <div id="authMsg"></div>
+        <form id="authForm">
+          ${authMode === 'signup' ? `
+            <div class="form-group"><label>Full name</label><input type="text" id="fullName" required placeholder="e.g. Juan Dela Cruz"></div>
+            <div class="form-group"><label>Select your store *</label><select id="storeSelect" required>
+              <option value="">-- Choose your store --</option>${storeOptions}
+            </select></div>
+          ` : ''}
+          <div class="form-group"><label>Email</label><input type="email" id="email" required placeholder="you@example.com"></div>
+          <div class="form-group"><label>Password</label><input type="password" id="password" required minlength="6" placeholder="At least 6 characters"></div>
+          <button type="submit" class="btn-full" id="submitBtn">${authMode === 'signup' ? 'Sign up' : 'Sign in'}</button>
+        </form>
+        <p style="text-align:center;margin-top:16px;font-size:13px;">
+          ${authMode === 'signup' ? 'Already have an account?' : 'New here?'}
+          <span class="link" id="switchLink">${authMode === 'signup' ? 'Sign in' : 'Create an account'}</span>
+        </p>
+      </div>
+    </div>`;
+  document.getElementById('switchLink').onclick = () => { authMode = authMode === 'login' ? 'signup' : 'login'; renderAuth(); };
+  document.getElementById('authForm').onsubmit = handleAuth;
+}
+
+async function handleAuth(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('submitBtn'); btn.disabled = true;
+  try {
+    if (authMode === 'signup') {
+      const fullName = document.getElementById('fullName').value.trim();
+      const sel = document.getElementById('storeSelect');
+      const opt = sel.selectedOptions[0];
+      if (!sel.value) throw new Error('Please select your store.');
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+      if (error) throw error;
+      if (data.user) {
+        await sb.from('pgds_profiles').update({ full_name: fullName, store_number: opt.dataset.num, store_name: opt.dataset.name }).eq('id', data.user.id);
+      }
+      showMsg('authMsg', 'Account created! Waiting for admin approval.', 'success');
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await route();
+    }
+  } catch (err) { showMsg('authMsg', err.message || 'Error', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+// ---------- STAFF DASHBOARD ----------
+async function renderStaff() {
+  const storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || 'no store';
+  app.innerHTML = `
+    <div class="header"><h1>PG Docs Sign</h1>
+      <div class="user-info"><span>${h(currentUser.full_name || currentUser.email)} - ${h(storeLabel)}</span>
+      <button class="secondary" onclick="logout()">Logout</button></div>
+    </div>
+    <div class="container">
+      <div class="box">
+        <h3>Upload a document for signature</h3>
+        <div id="uploadMsg"></div>
+        <form id="uploadForm">
+          <div class="form-group"><label>Document title *</label><input type="text" id="docTitle" required placeholder="e.g. September expense report"></div>
+          <div class="row2">
+            <div class="form-group"><label>Urgency</label><select id="docUrgency">
+              <option value="low">Low</option><option value="normal" selected>Normal</option>
+              <option value="high">High</option><option value="urgent">Urgent</option>
+            </select></div>
+            <div class="form-group"><label>File (PDF/JPG/PNG, max 5MB) *</label>
+              <label for="fileInput" class="file-drop" id="fileDrop"><span id="fileDropText">Click to choose a file</span></label>
+              <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" required>
+            </div>
+          </div>
+          <div class="form-group"><label>Notes (optional)</label><textarea id="docNotes" placeholder="Any note for the signer..."></textarea></div>
+          <button type="submit" id="uploadBtn">Upload for signature</button>
+        </form>
+      </div>
+      <h2 style="font-size:18px;margin-bottom:12px;">My Documents</h2>
+      <div class="tabs">
+        <div class="tab ${staffTab==='pending'?'active':''}" data-t="pending">Pending</div>
+        <div class="tab ${staffTab==='approved'?'active':''}" data-t="approved">Approved</div>
+        <div class="tab ${staffTab==='rejected'?'active':''}" data-t="rejected">Rejected</div>
+      </div>
+      <div id="docList"></div>
+    </div>`;
+  document.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStaff(); });
+  document.getElementById('fileInput').onchange = handleFilePick;
+  document.getElementById('uploadForm').onsubmit = handleUpload;
+  loadMyDocs();
+}
+
+function handleFilePick() {
+  const f = document.getElementById('fileInput').files[0];
+  const drop = document.getElementById('fileDrop'), txt = document.getElementById('fileDropText');
+  if (!f) { drop.classList.remove('has-file'); txt.textContent = 'Click to choose a file'; return; }
+  const mb = f.size / 1048576;
+  if (mb > MAX_FILE_MB) { document.getElementById('fileInput').value = ''; txt.textContent = `Too big (${mb.toFixed(1)}MB). Max ${MAX_FILE_MB}MB.`; drop.classList.remove('has-file'); return; }
+  drop.classList.add('has-file'); txt.textContent = `${f.name} (${mb.toFixed(2)}MB)`;
+}
+
+async function handleUpload(e) {
+  e.preventDefault();
+  const f = document.getElementById('fileInput').files[0];
+  const title = document.getElementById('docTitle').value.trim();
+  const urgency = document.getElementById('docUrgency').value;
+  const notes = document.getElementById('docNotes').value.trim();
+  if (!f || !title) return;
+  const btn = document.getElementById('uploadBtn'); btn.disabled = true; btn.textContent = 'Uploading...';
+  try {
+    const ext = (f.name.split('.').pop() || 'bin').toLowerCase();
+    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const up = await sb.storage.from('pgds-pending').upload(path, f, { contentType: f.type });
+    if (up.error) throw up.error;
+    const ins = await sb.from('pgds_documents').insert({
+      uploader_id: currentUser.id, store_number: currentUser.store_number,
+      title, notes, urgency, original_file_path: path, status: 'pending'
+    });
+    if (ins.error) { await sb.storage.from('pgds-pending').remove([path]); throw ins.error; }
+    showMsg('uploadMsg', 'Uploaded! It is now in the signer\'s queue.', 'success');
+    document.getElementById('uploadForm').reset();
+    document.getElementById('fileDrop').classList.remove('has-file');
+    document.getElementById('fileDropText').textContent = 'Click to choose a file';
+    staffTab = 'pending'; renderStaff();
+  } catch (err) { showMsg('uploadMsg', err.message || err, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Upload for signature'; }
+}
+
+async function loadMyDocs() {
+  const list = document.getElementById('docList');
+  list.innerHTML = '<p class="empty">Loading...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*').eq('uploader_id', currentUser.id).eq('status', staffTab).order('created_at', { ascending: false });
+  if (error) return list.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return list.innerHTML = `<p class="empty">No ${staffTab} documents.</p>`;
+  list.innerHTML = `<table><thead><tr><th>Title</th><th>Urgency</th><th>Uploaded</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(d => `<tr>
+      <td>${h(d.title)}${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}</td>
+      <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
+      <td>${new Date(d.created_at).toLocaleString()}</td>
+      <td><span class="badge ${d.status}">${d.status}</span>${d.status==='rejected'&&d.reject_reason?`<div style="font-size:12px;color:#991b1b;margin-top:4px;">${h(d.reject_reason)}</div>`:''}</td>
+      <td class="actions">
+        ${d.status==='approved'&&d.signed_file_path?`<button class="success" onclick="downloadFile('pgds-signed','${d.signed_file_path}')">Download</button>`:''}
+        ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">View</button>`:''}
+        ${d.status==='pending'?`<button class="danger" onclick="cancelDoc('${d.id}','${d.original_file_path}')">Cancel</button>`:''}
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function downloadFile(bucket, path) {
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300);
+  if (error) return alert(error.message);
+  window.open(data.signedUrl, '_blank');
+}
+
+async function cancelDoc(id, path) {
+  if (!confirm('Cancel this pending document?')) return;
+  await sb.storage.from('pgds-pending').remove([path]);
+  const { error } = await sb.from('pgds_documents').delete().eq('id', id);
+  if (error) return alert(error.message);
+  loadMyDocs();
+}
+
+// ---------- ADMIN ----------
+async function renderAdmin() {
+  app.innerHTML = `
+    <div class="header"><h1>PG Docs Sign - Admin</h1>
+      <div class="user-info"><span>${h(currentUser.full_name || currentUser.email)} (admin)</span>
+      <button class="secondary" onclick="logout()">Logout</button></div>
+    </div>
+    <div class="container">
+      <div class="tabs">
+        <div class="tab ${adminView==='pending-users'?'active':''}" data-v="pending-users">Pending Approvals <span id="pendingCount"></span></div>
+        <div class="tab ${adminView==='users'?'active':''}" data-v="users">All Users</div>
+        <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">Documents Queue <span id="docsCount"></span></div>
+        <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
+        <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures (soon)</div>
+      </div>
+      <div id="msg"></div>
+      <div id="content"></div>
+    </div>`;
+  document.querySelectorAll('.tab[data-v]').forEach(t => t.onclick = () => { adminView = t.dataset.v; renderAdmin(); });
+  renderAdminView();
+  updateAdminCounts();
+}
+
+async function updateAdminCounts() {
+  const [{ count: pu }, { count: pd }] = await Promise.all([
+    sb.from('pgds_profiles').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    sb.from('pgds_documents').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+  ]);
+  const pc = document.getElementById('pendingCount'); if (pc) pc.textContent = pu ? `(${pu})` : '';
+  const dc = document.getElementById('docsCount'); if (dc) dc.textContent = pd ? `(${pd})` : '';
+}
+
+async function renderAdminView() {
+  const el = document.getElementById('content');
+  if (adminView === 'pending-users') return renderPendingUsers(el);
+  if (adminView === 'users') return renderAllUsers(el);
+  if (adminView === 'documents') return renderDocuments(el);
+  if (adminView === 'stores') return renderStores(el);
+  if (adminView === 'signatures') return el.innerHTML = '<p class="empty">Signature manager coming in Phase 3.</p>';
+}
+
+async function renderPendingUsers(el) {
+  el.innerHTML = '<p class="empty">Loading...</p>';
+  const { data, error } = await sb.from('pgds_profiles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+  if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return el.innerHTML = '<p class="empty">No pending approvals.</p>';
+  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Signed up</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(u => `<tr>
+      <td>${h(u.email)}</td><td>${h(u.full_name||'-')}</td>
+      <td><input type="text" style="width:80px" id="snum-${u.id}" value="${h(u.store_number||'')}"></td>
+      <td><input type="text" style="width:180px" id="sname-${u.id}" value="${h(u.store_name||'')}"></td>
+      <td>${new Date(u.created_at).toLocaleString()}</td>
+      <td class="actions">
+        <button class="success" onclick="approveUser('${u.id}')">Approve</button>
+        <button class="danger" onclick="rejectUser('${u.id}')">Reject</button>
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function renderAllUsers(el) {
+  el.innerHTML = '<p class="empty">Loading...</p>';
+  const { data, error } = await sb.from('pgds_profiles').select('*').order('created_at', { ascending: false });
+  if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  const nameById = {}; data.forEach(u => nameById[u.id] = u.full_name || u.email);
+  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Store #</th><th>Store Name</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(u => `<tr>
+      <td>${h(u.email)}</td><td>${h(u.full_name||'-')}</td>
+      <td>${h(u.store_number||'-')}</td><td>${h(u.store_name||'-')}</td>
+      <td><span class="badge ${u.role==='admin'?'urgent':'normal'}">${u.role}</span></td>
+      <td><span class="badge ${u.status}">${u.status}</span></td>
+      <td>${u.approved_by&&nameById[u.approved_by]?h(nameById[u.approved_by]):'-'}${u.approved_at?`<div style="font-size:11px;color:#64748b;">${new Date(u.approved_at).toLocaleDateString()}</div>`:''}</td>
+      <td class="actions">
+        ${u.status!=='approved'?`<button class="success" onclick="approveUser('${u.id}',true)">Approve</button>`:''}
+        ${u.status!=='rejected'&&u.id!==currentUser.id?`<button class="danger" onclick="rejectUser('${u.id}',true)">Reject</button>`:''}
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function renderDocuments(el) {
+  el.innerHTML = `
+    <div class="tabs" style="margin-bottom:16px">
+      <div class="tab ${docsFilter==='pending'?'active':''}" data-d="pending">Pending</div>
+      <div class="tab ${docsFilter==='approved'?'active':''}" data-d="approved">Approved</div>
+      <div class="tab ${docsFilter==='rejected'?'active':''}" data-d="rejected">Rejected</div>
+    </div>
+    <div id="docsBody"><p class="empty">Loading...</p></div>`;
+  el.querySelectorAll('.tab[data-d]').forEach(t => t.onclick = () => { docsFilter = t.dataset.d; renderDocuments(el); });
+  const body = document.getElementById('docsBody');
+  const { data, error } = await sb.from('pgds_documents').select('*').eq('status', docsFilter).order('urgency', { ascending: false }).order('created_at', { ascending: false });
+  if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return body.innerHTML = `<p class="empty">No ${docsFilter} documents.</p>`;
+  const uids = [...new Set(data.map(d => d.uploader_id))];
+  const profMap = {};
+  if (uids.length) {
+    const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
+    (ps||[]).forEach(p => profMap[p.id] = p);
+  }
+  body.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store #</th><th>Store Name</th><th>Urgency</th><th>Uploaded</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(d => { const up = profMap[d.uploader_id]||{}; return `<tr>
+      <td>${h(d.title)}${d.notes?`<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>`:''}</td>
+      <td>${h(up.full_name||up.email||'-')}</td>
+      <td>${h(d.store_number||up.store_number||'-')}</td>
+      <td>${h(up.store_name||'-')}</td>
+      <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
+      <td>${new Date(d.created_at).toLocaleString()}</td>
+      <td class="actions">
+        <button class="secondary" onclick="viewAdminDoc('${d.status==='approved'&&d.signed_file_path?'pgds-signed':(d.status==='rejected'?'pgds-rejected':'pgds-pending')}','${d.status==='approved'&&d.signed_file_path?d.signed_file_path:d.original_file_path}')">View</button>
+        ${d.status==='pending'?`<button class="success" onclick="signDoc('${d.id}')">Sign</button>`:''}
+        ${d.status==='pending'?`<button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>`:''}
+      </td>
+    </tr>`; }).join('')}</tbody></table>`;
+}
+
+async function viewAdminDoc(bucket, path) {
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300);
+  if (error) return alert(error.message);
+  window.open(data.signedUrl, '_blank');
+}
+
+async function signDoc(id) { alert('Signing engine coming in Phase 3.'); }
+
+async function rejectDoc(id) {
+  const reason = prompt('Reason for rejection:') || '';
+  if (!reason) return;
+  const { error } = await sb.from('pgds_documents').update({ status: 'rejected', reject_reason: reason, signed_by: currentUser.id, signed_at: new Date().toISOString() }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'Document rejected.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function approveUser(id) {
+  const numEl = document.getElementById(`snum-${id}`), nameEl = document.getElementById(`sname-${id}`);
+  const patch = { status: 'approved', approved_at: new Date().toISOString(), approved_by: currentUser.id };
+  if (numEl) patch.store_number = numEl.value.trim();
+  if (nameEl) patch.store_name = nameEl.value.trim();
+  const { error } = await sb.from('pgds_profiles').update(patch).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'User approved.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function rejectUser(id) {
+  const reason = prompt('Reason for rejection (optional):') || '';
+  const { error } = await sb.from('pgds_profiles').update({ status: 'rejected', reject_reason: reason }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'User rejected.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function renderStores(el) {
+  el.innerHTML = `
+    <div class="box">
+      <h3>Add a new store</h3>
+      <form id="addStoreForm" style="display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:end;">
+        <div class="form-group" style="margin:0"><label>Store #</label><input type="text" id="newStoreNum" required></div>
+        <div class="form-group" style="margin:0"><label>Store name</label><input type="text" id="newStoreName" required></div>
+        <button type="submit">Add store</button>
+      </form>
+    </div>
+    <div id="storesBody"><p class="empty">Loading...</p></div>`;
+  document.getElementById('addStoreForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const num = document.getElementById('newStoreNum').value.trim();
+    const name = document.getElementById('newStoreName').value.trim();
+    const { error } = await sb.from('pgds_stores').insert({ store_number: num, store_name: name, created_by: currentUser.id });
+    if (error) return showMsg('msg', error.message, 'error');
+    showMsg('msg', 'Store added.', 'success'); renderStores(el);
+  };
+  const body = document.getElementById('storesBody');
+  const { data, error } = await sb.from('pgds_stores').select('*').order('store_number', { ascending: true });
+  if (error) return body.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return body.innerHTML = '<p class="empty">No stores yet.</p>';
+  body.innerHTML = `<table><thead><tr><th>Store #</th><th>Store Name / Branch</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(s => `<tr>
+      <td><input type="text" style="width:80px" id="stn-${s.id}" value="${h(s.store_number)}"></td>
+      <td><input type="text" style="width:100%" id="stnm-${s.id}" value="${h(s.store_name)}"></td>
+      <td><span class="badge ${s.active?'approved':'rejected'}">${s.active?'active':'inactive'}</span></td>
+      <td>${new Date(s.created_at).toLocaleDateString()}</td>
+      <td class="actions">
+        <button class="success" onclick="saveStore('${s.id}')">Save</button>
+        <button class="secondary" onclick="toggleStore('${s.id}',${!s.active})">${s.active?'Deactivate':'Activate'}</button>
+        <button class="danger" onclick="deleteStore('${s.id}')">Delete</button>
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function saveStore(id) {
+  const num = document.getElementById(`stn-${id}`).value.trim();
+  const name = document.getElementById(`stnm-${id}`).value.trim();
+  const { error } = await sb.from('pgds_stores').update({ store_number: num, store_name: name }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  showMsg('msg', 'Store updated.', 'success');
+}
+async function toggleStore(id, active) {
+  const { error } = await sb.from('pgds_stores').update({ active }).eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  renderAdminView();
+}
+async function deleteStore(id) {
+  if (!confirm('Delete this store?')) return;
+  const { error } = await sb.from('pgds_stores').delete().eq('id', id);
+  if (error) return showMsg('msg', error.message, 'error');
+  renderAdminView();
+}
+
+async function logout() { await sb.auth.signOut(); currentUser = null; route(); }
+
+// start
+route();
+</script>
+</body>
+</html>
