@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PG Docs Sign - My Documents</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="header">
+  <h1>PG Docs Sign</h1>
+  <div class="user-info">
+    <span id="userEmail"></span>
+    <button class="secondary" id="logoutBtn">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+  <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+    <h2 style="font-size:18px;">My Documents</h2>
+    <p style="color:#64748b; font-size:13px;">Upload flow will be added in Phase 2.</p>
+  </div>
+
+  <div id="msg"></div>
+
+  <div class="tabs">
+    <div class="tab active" data-status="pending">Pending</div>
+    <div class="tab" data-status="approved">Approved</div>
+    <div class="tab" data-status="rejected">Rejected</div>
+  </div>
+
+  <div id="docList"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>
