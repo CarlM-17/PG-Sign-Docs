@@ -19,15 +19,17 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
   .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
   .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 12px; }
-  /* Corporate header */
-  .header { background: linear-gradient(180deg, var(--green-100) 0%, var(--green-50) 100%); border-bottom: 3px solid var(--gold); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(13,92,47,0.06); }
+  /* Corporate header - dark green */
+  .header { background: linear-gradient(180deg, var(--green-900) 0%, var(--green-700) 100%); border-bottom: 3px solid var(--gold); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(6,78,59,0.25); }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand img { width: 44px; height: 44px; border-radius: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  .brand img { width: 46px; height: 46px; border-radius: 23px; box-shadow: 0 2px 8px rgba(0,0,0,0.35); border: 2px solid var(--gold); background: #fff; object-fit: cover; }
   .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
-  .brand-text .title { font-size: 18px; font-weight: 800; color: var(--green-900); letter-spacing: .3px; }
-  .brand-text .subtitle { font-size: 11px; color: var(--green-700); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-  .user-info { font-size: 13px; color: var(--green-900); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .user-info .name { font-weight: 600; }
+  .brand-text .title { font-size: 19px; font-weight: 800; color: #fff; letter-spacing: .3px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .brand-text .subtitle { font-size: 11px; color: var(--gold-light); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+  .user-info { font-size: 13px; color: #fff; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .user-info .name { font-weight: 700; color: #fff; }
+  .user-info button { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+  .user-info button:hover { background: rgba(255,255,255,0.25); }
   /* Card */
   .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(6,78,59,0.06); border: 1px solid rgba(13,92,47,0.08); }
   .card h1 { font-size: 20px; margin-bottom: 6px; color: var(--green-900); }
@@ -182,7 +184,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v6-corporate';
+const APP_VERSION = 'v6.1-darkgreen';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
