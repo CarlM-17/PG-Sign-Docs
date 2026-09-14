@@ -84,8 +84,13 @@
   .tab { padding: 12px 18px; cursor: pointer; border-bottom: 3px solid transparent; font-size: 14px; color: var(--muted); white-space: nowrap; font-weight: 500; margin-bottom: -2px; }
   .tab.active { color: var(--green-700); border-color: var(--green-700); font-weight: 700; }
   .tab:hover:not(.active) { color: var(--green-900); background: var(--green-50); }
-  /* Table */
-  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(6,78,59,0.05); }
+  /* Table with horizontal scroll wrapper */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border-radius: 10px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); margin-bottom: 12px; background: var(--card); }
+  .table-scroll::-webkit-scrollbar { height: 8px; }
+  .table-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--green-700); border-radius: 4px; }
+  .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--green-900); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); min-width: 600px; }
   th, td { padding: 12px 14px; text-align: left; font-size: 14px; vertical-align: top; }
   th { background: var(--green-900); color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
   tr { border-top: 1px solid #f1f5f9; }
@@ -228,7 +233,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8.2-inapp-viewer';
+const APP_VERSION = 'v8.3-scroll-tables';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -1682,6 +1687,19 @@ function closeSigningModal() {
 
 async function logout() { await sb.auth.signOut(); currentUser = null; route(); }
 function refreshApp() { window.location.reload(); }
+
+// Auto-wrap every table in a horizontal-scroll container so mobile users can pan across columns
+function wrapAllTables() {
+  document.querySelectorAll('table').forEach(t => {
+    if (t.parentElement && t.parentElement.classList.contains('table-scroll')) return;
+    const w = document.createElement('div');
+    w.className = 'table-scroll';
+    t.parentNode.insertBefore(w, t);
+    w.appendChild(t);
+  });
+}
+const tableObserver = new MutationObserver(() => wrapAllTables());
+tableObserver.observe(document.body, { childList: true, subtree: true });
 
 route();
 </script>
