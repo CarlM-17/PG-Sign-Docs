@@ -157,6 +157,21 @@
   .page-zoom-controls .page-num { color: var(--gold-light); font-size: 12px; font-weight: 700; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 12px; }
   .page-zoom-controls button { background: rgba(255,255,255,0.9); color: var(--green-900); border: 1px solid rgba(0,0,0,0.1); padding: 4px 10px; font-size: 13px; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
   .page-zoom-controls .page-zoom-badge { background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; color: var(--green-900); min-width: 40px; text-align: center; }
+  .page-num-btn { background: var(--gold) !important; color: #1a1a1a !important; font-weight: 700 !important; padding: 4px 12px !important; border-radius: 12px !important; }
+  .page-num-btn:hover { background: #b58f1c !important; }
+  /* Focus mode - hide other pages */
+  .focus-mode .pdf-page-wrap { display: none; }
+  .focus-mode .pdf-page-wrap.focused { display: block; }
+  .focus-mode .pdf-page-wrap.focused { margin: 0 auto 40px; }
+  .focus-banner { position: sticky; top: 0; background: linear-gradient(90deg, var(--gold), #b58f1c); color: #1a1a1a; padding: 10px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; }
+  .focus-banner button { background: rgba(255,255,255,0.5); color: #1a1a1a; border: 1px solid rgba(0,0,0,0.2); padding: 6px 14px; font-weight: 700; }
+  .focus-banner button:hover { background: rgba(255,255,255,0.8); }
+  .page-navigator { background: rgba(255,255,255,0.95); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 90vw; }
+  .page-nav-label { font-size: 13px; color: var(--green-900); font-weight: 700; margin-bottom: 10px; }
+  .page-nav-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+  .page-nav-buttons button { background: var(--green-100); color: var(--green-900); font-weight: 700; padding: 6px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--green-500); }
+  .page-nav-buttons button:hover { background: var(--green-700); color: #fff; }
+  .focus-mode .page-navigator { display: none; }
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
   .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
@@ -239,7 +254,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8.4-perpage';
+const APP_VERSION = 'v8.5-focus';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -1495,7 +1510,7 @@ async function loadDocForSigning() {
     const controls = document.createElement('div');
     controls.className = 'page-zoom-controls';
     controls.innerHTML = `
-      <span class="page-num">Page ${i}</span>
+      <button class="page-num-btn" onclick="focusPage(${pageIdx})">📄 Page ${i}</button>
       <button onclick="pageZoomOut(${pageIdx})">➖</button>
       <span class="page-zoom-badge">100%</span>
       <button onclick="pageZoomIn(${pageIdx})">➕</button>
@@ -1513,6 +1528,18 @@ async function loadDocForSigning() {
     sigState.pages.push(wrap);
     sigState.pageWraps.push(sizer);
     sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
+  }
+  // Add a page navigator strip at the top
+  if (sigState.pages.length > 1) {
+    const nav = document.createElement('div');
+    nav.className = 'page-navigator';
+    nav.innerHTML = `
+      <div class="page-nav-label">📚 ${sigState.pages.length} pages - click a page to focus on it:</div>
+      <div class="page-nav-buttons">
+        ${sigState.pages.map((_, i) => `<button onclick="focusPage(${i})">📄 Page ${i + 1}</button>`).join('')}
+      </div>
+    `;
+    modalDoc.insertBefore(nav, modalDoc.firstChild);
   }
   // Initialize per-page zoom map + attach pinch per page
   sigState.pageZoom = new Array(sigState.pages.length).fill(1);
@@ -1565,6 +1592,43 @@ function zoomFit() {
   if (!sigState.pageZoom) return;
   sigState.pageZoom = sigState.pageZoom.map(() => 1);
   sigState.pages.forEach((_, i) => applyPageZoom(i));
+}
+
+function focusPage(idx) {
+  const modalDoc = document.getElementById('modalDoc');
+  if (!modalDoc) return;
+  modalDoc.classList.add('focus-mode');
+  sigState.pageWraps.forEach((sizer, i) => {
+    sizer.classList.toggle('focused', i === idx);
+  });
+  // Add banner
+  let banner = document.getElementById('focusBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'focusBanner';
+    banner.className = 'focus-banner';
+    modalDoc.insertBefore(banner, modalDoc.firstChild);
+  }
+  const total = sigState.pages.length;
+  banner.innerHTML = `
+    <span>📄 Viewing Page ${idx + 1} of ${total}</span>
+    <div style="display:flex;gap:6px;">
+      ${idx > 0 ? `<button onclick="focusPage(${idx - 1})">← Prev</button>` : ''}
+      ${idx < total - 1 ? `<button onclick="focusPage(${idx + 1})">Next →</button>` : ''}
+      <button onclick="unfocusPages()">✖ Show all pages</button>
+    </div>`;
+  sigState.focusedPage = idx;
+  // Scroll into view
+  modalDoc.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function unfocusPages() {
+  const modalDoc = document.getElementById('modalDoc');
+  if (!modalDoc) return;
+  modalDoc.classList.remove('focus-mode');
+  sigState.pageWraps.forEach(sizer => sizer.classList.remove('focused'));
+  const banner = document.getElementById('focusBanner'); if (banner) banner.remove();
+  sigState.focusedPage = null;
 }
 function pageZoomIn(idx) { sigState.pageZoom[idx] = Math.min(4, pageZoom(idx) + 0.25); applyPageZoom(idx); }
 function pageZoomOut(idx) { sigState.pageZoom[idx] = Math.max(0.5, pageZoom(idx) - 0.25); applyPageZoom(idx); }
