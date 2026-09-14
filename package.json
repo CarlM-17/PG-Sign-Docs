@@ -1,9 +1,0 @@
-{
-  "name": "pg-docs-sign",
-  "version": "0.1.0",
-  "description": "PG Docs Sign - digital signature web app for 31 stores",
-  "private": true,
-  "scripts": {
-    "dev": "vercel dev"
-  }
-}
