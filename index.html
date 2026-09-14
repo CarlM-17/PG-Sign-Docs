@@ -228,7 +228,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8.1-header';
+const APP_VERSION = 'v8.2-inapp-viewer';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -568,9 +568,64 @@ async function loadMyDocs() {
 }
 
 async function downloadFile(bucket, path) {
+  await openInAppViewer(bucket, path);
+}
+
+// In-app PDF/image viewer modal (never leaves the PWA)
+async function openInAppViewer(bucket, path) {
   const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300);
   if (error) return alert(error.message);
-  window.open(data.signedUrl, '_blank');
+  const url = data.signedUrl;
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.id = 'viewerModal';
+  const ext = (path.split('.').pop() || '').toLowerCase();
+  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+  modal.innerHTML = `
+    <div class="modal-topbar">
+      <span class="title">👁️ ${h(path.split('/').pop())}</span>
+      <div style="display:flex;gap:8px;">
+        <a href="${url}" download style="text-decoration:none;">
+          <button style="pointer-events:none;">⬇️ Download</button>
+        </a>
+        <button onclick="closeInAppViewer()">Close</button>
+      </div>
+    </div>
+    <div class="modal-doc" id="viewerBody" style="padding:20px;">
+      <p style="color:#fff">Loading...</p>
+    </div>`;
+  document.body.appendChild(modal);
+  const body = document.getElementById('viewerBody');
+  if (isImage) {
+    body.innerHTML = `<img src="${url}" style="max-width:100%;height:auto;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25);">`;
+  } else {
+    // Render PDF via PDF.js so it works reliably inside PWA
+    try {
+      const resp = await fetch(url);
+      const buf = await resp.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      body.innerHTML = '';
+      const containerWidth = Math.max(320, body.clientWidth - 40);
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const raw = page.getViewport({ scale: 1 });
+        const scale = Math.min(1.6, containerWidth / raw.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pdf-page';
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        canvas.style.marginBottom = '12px';
+        body.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      }
+    } catch (err) {
+      body.innerHTML = `<div class="msg error">Could not render: ${err.message}. <a href="${url}" target="_blank" style="color:#fff;">Open in new tab</a></div>`;
+    }
+  }
+}
+
+function closeInAppViewer() {
+  const m = document.getElementById('viewerModal'); if (m) m.remove();
 }
 
 async function cancelDoc(id, path) {
@@ -818,9 +873,7 @@ async function deleteApprovedDoc(id, originalPath, signedPath) {
 }
 
 async function viewAdminDoc(bucket, path) {
-  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300);
-  if (error) return alert(error.message);
-  window.open(data.signedUrl, '_blank');
+  await openInAppViewer(bucket, path);
 }
 
 async function rejectDoc(id) {
