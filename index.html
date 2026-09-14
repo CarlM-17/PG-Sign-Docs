@@ -8,6 +8,8 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/SignDocs_icon.png">
 <link rel="apple-touch-icon" href="/SignDocs_icon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
 <style>
   :root {
     --green-900:#064e3b; --green-700:#0d5c2f; --green-500:#10b981; --green-100:#d1fadf; --green-50:#f0fdf4;
@@ -238,7 +240,7 @@
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay.locked { border: none; background: transparent; cursor: default; pointer-events: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
-  .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
+  .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', 'Dancing Script', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
   .sig-overlay .sig-text.date { font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #1e40af; }
   .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: var(--red); border: 3px solid var(--red); border-radius: 6px; }
   .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 20px; height: 20px; background: var(--green-700); border-radius: 10px; cursor: nwse-resize; }
@@ -319,7 +321,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v10.4-date';
+const APP_VERSION = 'v10.5-fonts';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1582,7 +1584,7 @@ async function renderSignaturesMgr(el) {
     <div class="box">
       <h3>Draw a new saved signature</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Draw once, reuse forever from the Sign panel.</p>
-      <canvas id="sigMgrCanvas" class="draw-canvas" width="400" height="140"></canvas>
+      <canvas id="sigMgrCanvas" class="draw-canvas" style="display:block;width:100%;max-width:520px;height:170px;"></canvas>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:end;">
         <div style="flex:1;"><label>Name</label><input type="text" id="sigMgrName" placeholder="e.g. Main signature"></div>
         <button class="secondary" onclick="clearMgrCanvas()">Clear</button>
@@ -1604,6 +1606,10 @@ let mgr = { ctx: null, canvas: null, drawing: false, drawn: false, lastMid: null
 function initMgrCanvas() {
   const canvas = document.getElementById('sigMgrCanvas');
   const rect = canvas.getBoundingClientRect();
+  // Pin the on-screen size BEFORE enlarging the backing store; otherwise on high-DPI phones
+  // the canvas grows to width*devicePixelRatio and every stroke lands off-screen.
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.floor(rect.width * dpr);
   canvas.height = Math.floor(rect.height * dpr);
@@ -2295,6 +2301,30 @@ function visiblePageAndPos(ovW, ovH) {
   return { pageIdx: bestIdx, pageWrap, left, top };
 }
 
+// Render a typed-name overlay to a PNG using the same font/color/size the user sees
+async function rasterizeTypedText(ov) {
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+  const t = ov.el.querySelector('.sig-text');
+  const cs = getComputedStyle(t);
+  const S = 4; // supersample for crisp output
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(ov.el.offsetWidth * S));
+  c.height = Math.max(1, Math.round(ov.el.offsetHeight * S));
+  const ctx = c.getContext('2d');
+  let px = parseFloat(cs.fontSize) || 32;
+  const setFont = () => { ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${px * S}px ${cs.fontFamily}`; };
+  setFont();
+  const maxW = c.width * 0.96;
+  const measured = ctx.measureText(ov.text).width;
+  if (measured > maxW) { px = px * maxW / measured; setFont(); }
+  ctx.fillStyle = cs.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(ov.text, c.width / 2, c.height / 2);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
 async function bakeSignaturesIntoPdf() {
   const pdfDoc = await PDFLib.PDFDocument.load(sigState.pdfBytes, { updateMetadata: false });
   const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
@@ -2325,7 +2355,14 @@ async function bakeSignaturesIntoPdf() {
         const textW = font.widthOfTextAtSize(ov.text, fontSize);
         pdfPage.drawText(ov.text, { x: x + (w - textW) / 2, y: y + (hh - fontSize) / 2 + 4, size: fontSize, font, color: PDFLib.rgb(0.86, 0.15, 0.15) });
       } else {
-        pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: ov.isDate ? PDFLib.rgb(0.12, 0.25, 0.69) : PDFLib.rgb(0.02, 0.31, 0.18) });
+        if (ov.isDate) {
+          pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: PDFLib.rgb(0.12, 0.25, 0.69) });
+        } else {
+          // PDF standard fonts have no script face, so draw the typed name exactly as shown on screen
+          const png = await rasterizeTypedText(ov);
+          const img = await pdfDoc.embedPng(png);
+          pdfPage.drawImage(img, { x, y, width: w, height: hh });
+        }
       }
     }
   }
