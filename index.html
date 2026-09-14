@@ -239,6 +239,7 @@
   .sig-overlay.locked { border: none; background: transparent; cursor: default; pointer-events: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
   .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
+  .sig-overlay .sig-text.date { font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #1e40af; }
   .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: var(--red); border: 3px solid var(--red); border-radius: 6px; }
   .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 20px; height: 20px; background: var(--green-700); border-radius: 10px; cursor: nwse-resize; }
   .sig-overlay .remove-handle { position: absolute; left: -8px; top: -8px; width: 24px; height: 24px; background: var(--red); color: #fff; border-radius: 12px; text-align: center; line-height: 24px; cursor: pointer; font-size: 14px; }
@@ -318,7 +319,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v10.3-tabfocus';
+const APP_VERSION = 'v10.4-date';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1699,6 +1700,7 @@ async function openSigningModal() {
       <button class="modal-tool-btn" onclick="showSavedPopover()"><span class="ic">📎</span>Saved</button>
       <button class="modal-tool-btn" onclick="uploadSignatureImage()"><span class="ic">📤</span>Upload</button>
       <button class="modal-tool-btn" onclick="showTextPopover()"><span class="ic">🔤</span>Add Text</button>
+      <button class="modal-tool-btn" onclick="addDateToDoc()"><span class="ic">📅</span>Date</button>
       <button class="modal-tool-btn" onclick="showStampPopover()"><span class="ic">✅</span>Stamp</button>
       <button class="modal-tool-btn" id="saveBtn" onclick="saveSignatures()"><span class="ic">💾</span>Save</button>
       <button class="modal-tool-btn primary" id="approveBtn" onclick="approveDoc()"><span class="ic">✅</span>Approve</button>
@@ -1995,7 +1997,11 @@ function addImageOverlay(dataUrl, w, hh) {
   updateOverlayList();
   setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
-function addTextOverlay(text, isStamp) {
+function addDateToDoc() {
+  const d = new Date();
+  addTextOverlay(`${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`, false, true);
+}
+function addTextOverlay(text, isStamp, isDate = false) {
   if (!sigState.pages.length) return toast('Document not ready.', 'warn');
   const w = isStamp ? 180 : Math.max(120, text.length * 15);
   const hh = isStamp ? 60 : 50;
@@ -2005,10 +2011,10 @@ function addTextOverlay(text, isStamp) {
   div.className = 'sig-overlay'; div.id = id;
   div.style.left = target.left + 'px'; div.style.top = target.top + 'px';
   div.style.width = w + 'px'; div.style.height = hh + 'px';
-  div.innerHTML = `<div class="sig-text ${isStamp?'stamp':''}">${h(text)}</div><span class="remove-handle" onclick="removeOverlay('${id}')">&times;</span><span class="resize-handle"></span>`;
+  div.innerHTML = `<div class="sig-text ${isStamp?'stamp':''} ${isDate?'date':''}">${h(text)}</div><span class="remove-handle" onclick="removeOverlay('${id}')">&times;</span><span class="resize-handle"></span>`;
   target.pageWrap.appendChild(div);
   makeDraggable(div);
-  sigState.overlays.push({ id, type: 'text', text, isStamp, el: div, pageIdx: target.pageIdx });
+  sigState.overlays.push({ id, type: 'text', text, isStamp, isDate, el: div, pageIdx: target.pageIdx });
   updateOverlayList();
   setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
 }
@@ -2319,7 +2325,7 @@ async function bakeSignaturesIntoPdf() {
         const textW = font.widthOfTextAtSize(ov.text, fontSize);
         pdfPage.drawText(ov.text, { x: x + (w - textW) / 2, y: y + (hh - fontSize) / 2 + 4, size: fontSize, font, color: PDFLib.rgb(0.86, 0.15, 0.15) });
       } else {
-        pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: PDFLib.rgb(0.02, 0.31, 0.18) });
+        pdfPage.drawText(ov.text, { x: x + 4, y: y + (hh - fontSize) / 2 + 2, size: fontSize, font, color: ov.isDate ? PDFLib.rgb(0.12, 0.25, 0.69) : PDFLib.rgb(0.02, 0.31, 0.18) });
       }
     }
   }
