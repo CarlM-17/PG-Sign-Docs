@@ -111,6 +111,50 @@
   .actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .actions button { padding: 6px 12px; font-size: 12px; }
   .empty { text-align: center; padding: 40px; color: #9ca3af; font-size: 14px; }
+  /* Remarks */
+  .remarks-cell { min-width: 220px; max-width: 300px; }
+  .remark-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; }
+  .remark-text { font-size: 13px; color: #78350f; white-space: pre-wrap; word-break: break-word; }
+  .remark-meta { font-size: 10px; color: #a16207; margin-top: 4px; }
+  .remark-actions { display: flex; gap: 4px; margin-top: 6px; }
+  .remark-actions button { padding: 3px 8px; font-size: 11px; }
+  .staff-remark { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 12px; color: #78350f; white-space: pre-wrap; }
+  /* Guide */
+  .guide-hero { background: linear-gradient(135deg, var(--green-900), var(--green-700)); border-radius: 14px; padding: 22px; display: flex; gap: 18px; align-items: center; margin-bottom: 20px; border-bottom: 4px solid var(--gold); box-shadow: 0 4px 16px rgba(6,78,59,0.2); }
+  .guide-hero img { width: 64px; height: 64px; border-radius: 32px; border: 3px solid var(--gold); background: #fff; flex-shrink: 0; }
+  .guide-hero h2 { color: #fff; font-size: 22px; font-weight: 800; letter-spacing: .3px; }
+  .guide-hero p { color: var(--gold-light); font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .guide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .guide-card { background: var(--card); border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(6,78,59,0.06); border-left: 4px solid var(--green-700); }
+  .guide-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .guide-num { background: var(--green-700); color: #fff; width: 26px; height: 26px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+  .guide-icon { font-size: 20px; }
+  .guide-title { font-weight: 700; color: var(--green-900); font-size: 15px; }
+  .guide-body { font-size: 13.5px; color: #374151; line-height: 1.6; }
+  .guide-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .guide-good, .guide-bad { border-radius: 12px; padding: 16px 18px; }
+  .guide-good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .guide-bad { background: #fef2f2; border: 1px solid #fecaca; }
+  .guide-good h4 { color: #065f46; margin-bottom: 10px; font-size: 15px; }
+  .guide-bad h4 { color: #991b1b; margin-bottom: 10px; font-size: 15px; }
+  .guide-good ul, .guide-bad ul { margin-left: 18px; font-size: 13px; line-height: 1.9; }
+  .guide-good li { color: #065f46; }
+  .guide-bad li { color: #991b1b; }
+  .guide-steps { background: var(--card); border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(6,78,59,0.06); margin-bottom: 20px; border-left: 4px solid var(--gold); }
+  .guide-steps h4 { color: var(--green-900); margin-bottom: 12px; font-size: 15px; }
+  .guide-steps ol { margin-left: 20px; font-size: 13.5px; line-height: 2; color: #374151; }
+  .guide-status { background: var(--card); border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(6,78,59,0.06); margin-bottom: 20px; }
+  .guide-status h4 { color: var(--green-900); margin-bottom: 12px; font-size: 15px; }
+  .guide-status-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-top: 1px solid #f1f5f9; font-size: 13px; color: #374151; }
+  .guide-status-row:first-of-type { border-top: none; }
+  .guide-status-row > span:first-child { flex-shrink: 0; min-width: 76px; }
+  .guide-footer { background: linear-gradient(135deg, var(--gold), #b58f1c); color: #1a1a1a; border-radius: 12px; padding: 16px 20px; font-weight: 700; text-align: center; font-size: 14px; margin-bottom: 20px; }
+  @media (max-width: 720px) {
+    .guide-compare { grid-template-columns: 1fr; }
+    .guide-hero { padding: 16px; gap: 12px; }
+    .guide-hero img { width: 48px; height: 48px; }
+    .guide-hero h2 { font-size: 18px; }
+  }
   .box { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(6,78,59,0.06); border: 1px solid rgba(13,92,47,0.08); margin-bottom: 20px; }
   .box h3 { font-size: 16px; margin-bottom: 12px; color: var(--green-900); display: flex; align-items: center; gap: 8px; }
   .box h3::before { content: ''; width: 4px; height: 18px; background: var(--gold); border-radius: 2px; }
@@ -260,7 +304,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v9-fastsave';
+const APP_VERSION = 'v9.2-guide';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -299,6 +343,7 @@ let authMode = 'login';
 let adminView = 'dashboard';
 let docsFilter = 'pending';
 let staffTab = 'pending';
+let staffView = 'docs';
 let selectedFiles = [];
 
 function h(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -392,6 +437,91 @@ async function handleAuth(e) {
 }
 
 // ---------- STAFF ----------
+// ---------- GUIDE ----------
+function guideHTML() {
+  const rules = [
+    { n: 1, icon: '✍️', title: 'Complete the signatories first',
+      body: 'All documents must already carry the required handwritten signatures - Store Manager, Area Manager, and any other concerned personnel - <strong>before</strong> you upload them here. Skip this only when the document genuinely does not require those signatures.' },
+    { n: 2, icon: '📑', title: 'One document title per upload',
+      body: 'Do not mix different document types in a single submission. Every file in one upload must belong to the <strong>same document title or category</strong>. Mixed submissions may be rejected.' },
+    { n: 3, icon: '🔍', title: 'Upload clear, readable copies',
+      body: 'Photos and scans must be sharp, well lit, properly aligned, and complete. <strong>Blurry, dark, cropped, or unreadable</strong> files may be rejected.' },
+    { n: 4, icon: '📱', title: 'Phone or computer both work',
+      body: 'You can use this app on a mobile phone or on a PC. All that is required is a <strong>stable internet connection</strong>. On a phone you may upload from your gallery or take a photo directly.' },
+    { n: 5, icon: '🚦', title: 'Use the urgency level honestly',
+      body: 'Choose the urgency that truly matches the document. Reserve <strong>Urgent</strong> and <strong>High</strong> for items that genuinely need immediate attention.' },
+    { n: 6, icon: '🗓️', title: 'Respect the signing schedule',
+      body: 'Documents are reviewed and signed on an organized schedule so signing time is used efficiently. Honest use of the urgency option ensures that genuinely urgent documents get prioritized.' },
+  ];
+  return `
+    <div class="guide-hero">
+      <img src="/SignDocs_icon.png" alt="">
+      <div>
+        <h2>Guide for Admin Staff</h2>
+        <p>Document uploading standards - please read before submitting</p>
+      </div>
+    </div>
+
+    <div class="guide-grid">
+      ${rules.map(r => `
+        <div class="guide-card">
+          <div class="guide-card-head">
+            <span class="guide-num">${r.n}</span>
+            <span class="guide-icon">${r.icon}</span>
+            <span class="guide-title">${r.title}</span>
+          </div>
+          <p class="guide-body">${r.body}</p>
+        </div>`).join('')}
+    </div>
+
+    <div class="guide-compare">
+      <div class="guide-good">
+        <h4>✅ Accepted</h4>
+        <ul>
+          <li>Signed by all required personnel</li>
+          <li>One document title per upload</li>
+          <li>Sharp, bright, fully visible page</li>
+          <li>Whole document in frame, edges included</li>
+          <li>Urgency matches the real need</li>
+        </ul>
+      </div>
+      <div class="guide-bad">
+        <h4>❌ Likely rejected</h4>
+        <ul>
+          <li>Missing Store or Area Manager signature</li>
+          <li>Several different document types mixed together</li>
+          <li>Blurry, dark, or glare-covered photo</li>
+          <li>Corners or lines cut off</li>
+          <li>Everything marked Urgent</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-steps">
+      <h4>📤 How to upload</h4>
+      <ol>
+        <li><strong>Collect the signed document</strong> - make sure every required signature is already on paper.</li>
+        <li><strong>Give it a clear title</strong> - e.g. "RFP - Danlhey Paint Center - Sept 2026".</li>
+        <li><strong>Choose the urgency</strong> that honestly reflects the deadline.</li>
+        <li><strong>Add the files</strong> - tap <em>Choose files</em> to pick from your device, or <em>Take photo</em> to capture pages with your camera. Multiple pages of the <em>same</em> document are merged into one file automatically.</li>
+        <li><strong>Add notes</strong> if there is anything the signer should know.</li>
+        <li><strong>Tap Upload for signature</strong> and watch the status on your dashboard.</li>
+      </ol>
+    </div>
+
+    <div class="guide-status">
+      <h4>📊 What the statuses mean</h4>
+      <div class="guide-status-row"><span class="badge pending">Pending</span><span>Waiting in the signer's queue. You may still cancel it.</span></div>
+      <div class="guide-status-row"><span class="badge approved">Approved</span><span>Signed and finalized. Tap Download to get the signed copy.</span></div>
+      <div class="guide-status-row"><span class="badge rejected">Rejected</span><span>Returned with a reason. Fix the issue and upload again.</span></div>
+      <div class="guide-status-row"><span style="font-size:18px;">📣</span><span>A gold note on your document is a <strong>message from the signer</strong> - usually a missing requirement. Read it and act on it.</span></div>
+    </div>
+
+    <div class="guide-footer">
+      Before submitting, please review your documents carefully to avoid rejection and unnecessary delays.
+    </div>`;
+}
+
 function niceName() {
   if (currentUser.full_name && currentUser.full_name.trim()) return currentUser.full_name;
   const local = (currentUser.email || '').split('@')[0].replace(/[._-]/g, ' ');
@@ -447,9 +577,26 @@ function toggleMenu(e) {
 }
 
 async function renderStaff() {
+  if (staffView === 'guide') {
+    app.innerHTML = `
+      ${headerHTML('Guide')}
+      <div class="container">
+        <div class="tabs">
+          <div class="tab" data-sv="docs">📄 My Documents</div>
+          <div class="tab active" data-sv="guide">📖 Guide for Admin Staff</div>
+        </div>
+        ${guideHTML()}
+      </div>`;
+    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+    return;
+  }
   app.innerHTML = `
     ${headerHTML('My Documents')}
     <div class="container">
+      <div class="tabs">
+        <div class="tab active" data-sv="docs">📄 My Documents</div>
+        <div class="tab" data-sv="guide">📖 Guide for Admin Staff</div>
+      </div>
       <div id="staffKpis" class="kpi-row"></div>
       <div class="box">
         <h3>Upload documents for signature</h3>
@@ -487,6 +634,7 @@ async function renderStaff() {
       </div>
       <div id="docList"></div>
     </div>`;
+  document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
   document.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStaff(); });
   document.getElementById('fileInput').onchange = handleFilePick;
   document.getElementById('cameraInput').onchange = handleFilePick;
@@ -611,7 +759,7 @@ async function loadMyDocs() {
   if (!data.length) return list.innerHTML = `<p class="empty">No ${staffTab} documents.</p>`;
   list.innerHTML = `<table><thead><tr><th>Title</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     ${data.map(d => { const age = ageHours(d.created_at, d.signed_at); return `<tr>
-      <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}</td>
+      <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}${d.admin_remarks ? `<div class="staff-remark">📣 <strong>Message from signer:</strong><br>${h(d.admin_remarks)}</div>` : ''}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
       <td>${ageBadge(age)}${d.signed_at ? `<div style="font-size:11px;color:var(--muted);">until signed</div>` : ''}</td>
@@ -707,6 +855,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
         <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
         <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
+        <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Staff Guide</div>
       </div>
       <div id="msg"></div>
       <div id="content"></div>
@@ -735,6 +884,7 @@ async function renderAdminView() {
   if (adminView === 'rejected') return renderRejected(el);
   if (adminView === 'stores') return renderStores(el);
   if (adminView === 'signatures') return renderSignaturesMgr(el);
+  if (adminView === 'guide') return el.innerHTML = guideHTML();
 }
 
 async function renderDashboard(el) {
@@ -825,6 +975,7 @@ async function renderPendingQueue(el) {
   el.innerHTML = '<p class="empty">Loading signing queue...</p>';
   const { data, error } = await sb.from('pgds_documents').select('*').eq('status', 'pending').order('urgency', { ascending: false }).order('created_at', { ascending: false });
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  window.__pgdsDocsCache = data;
   if (!data.length) return el.innerHTML = `<p class="empty">📭 No pending documents. All caught up!</p>`;
   const uids = [...new Set(data.map(d => d.uploader_id))];
   const profMap = {};
@@ -832,7 +983,7 @@ async function renderPendingQueue(el) {
     const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
     (ps||[]).forEach(p => profMap[p.id] = p);
   }
-  el.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Actions</th></tr></thead><tbody>
+  el.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Remarks / Comments</th><th>Actions</th></tr></thead><tbody>
     ${data.map(d => { const up = profMap[d.uploader_id]||{}; const age = ageHours(d.created_at); return `<tr>
       <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${h(d.notes)}</div>`:''}${d.signed_file_path?`<div style="font-size:11px;color:#059669;margin-top:4px;">✓ Partially signed - open to continue</div>`:''}</td>
       <td>${h(up.full_name||up.email||'-')}</td>
@@ -840,11 +991,67 @@ async function renderPendingQueue(el) {
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${new Date(d.created_at).toLocaleString()}</td>
       <td>${ageBadge(age)}</td>
+      <td class="remarks-cell">${renderRemarksCell(d)}</td>
       <td class="actions">
         <button onclick="signDoc('${d.id}')">✍️ View & Sign</button>
         <button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>
       </td>
     </tr>`; }).join('')}</tbody></table>`;
+}
+
+function renderRemarksCell(d) {
+  if (d.admin_remarks) {
+    return `<div class="remark-box">
+      <div class="remark-text">${h(d.admin_remarks)}</div>
+      <div class="remark-meta">${d.remarks_at ? new Date(d.remarks_at).toLocaleString() : ''}</div>
+      <div class="remark-actions">
+        <button class="secondary" onclick="openRemarksDialog('${d.id}')">✏️ Edit</button>
+        <button class="danger" onclick="deleteRemarks('${d.id}')">🗑 Delete</button>
+      </div>
+    </div>`;
+  }
+  return `<button class="secondary" onclick="openRemarksDialog('${d.id}')">➕ Add remark</button>`;
+}
+
+function openRemarksDialog(docId) {
+  closePopover();
+  const row = (window.__pgdsDocsCache || []).find(x => x.id === docId);
+  const existing = row ? (row.admin_remarks || '') : '';
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>${existing ? 'Edit remark' : 'Add remark for staff'}</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">The uploader will see this on their dashboard - e.g. missing requirements.</p>
+    <textarea id="remarkText" style="min-height:110px;font-size:14px;" placeholder="e.g. Missing the area manager signature on page 2. Please re-upload.">${h(existing)}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="saveRemarks('${docId}')">💾 Save remark</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+  setTimeout(() => { const t = document.getElementById('remarkText'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 50);
+}
+
+async function saveRemarks(docId) {
+  const text = document.getElementById('remarkText').value.trim();
+  if (!text) return toast('Type a remark first.', 'warn');
+  const { error } = await sb.from('pgds_documents').update({
+    admin_remarks: text, remarks_at: new Date().toISOString(), remarks_by: currentUser.id
+  }).eq('id', docId);
+  if (error) return toast(error.message, 'error');
+  closePopover();
+  toast('✓ Remark saved');
+  renderAdminView();
+}
+
+async function deleteRemarks(docId) {
+  if (!confirm('Delete this remark?')) return;
+  const { error } = await sb.from('pgds_documents').update({
+    admin_remarks: null, remarks_at: null, remarks_by: null
+  }).eq('id', docId);
+  if (error) return toast(error.message, 'error');
+  toast('Remark deleted');
+  renderAdminView();
 }
 
 async function renderRejected(el) {
