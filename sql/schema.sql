@@ -37,7 +37,7 @@ create table if not exists pgds_signatures (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
-  image_data text not null, -- base64 PNG data URL
+  image_data text not null,
   is_default boolean default false,
   created_at timestamptz default now()
 );
@@ -77,22 +77,37 @@ create trigger pgds_on_auth_user_created
   after insert on auth.users
   for each row execute function pgds_handle_new_user();
 
+-- Helper functions (SECURITY DEFINER bypasses RLS to avoid recursion)
+create or replace function pgds_is_admin()
+returns boolean
+language sql security definer set search_path = public stable
+as $$
+  select exists (select 1 from pgds_profiles where id = auth.uid() and role = 'admin' and status = 'approved');
+$$;
+
+create or replace function pgds_is_approved()
+returns boolean
+language sql security definer set search_path = public stable
+as $$
+  select exists (select 1 from pgds_profiles where id = auth.uid() and status = 'approved');
+$$;
+
+grant execute on function pgds_is_admin() to authenticated;
+grant execute on function pgds_is_approved() to authenticated;
+
 -- Row-Level Security
 alter table pgds_profiles enable row level security;
 alter table pgds_documents enable row level security;
 alter table pgds_signatures enable row level security;
 alter table pgds_activity enable row level security;
 
--- Profiles: users can read/update their own; admins can read/update all
 drop policy if exists pgds_profiles_self_read on pgds_profiles;
 create policy pgds_profiles_self_read on pgds_profiles
   for select using (auth.uid() = id);
 
 drop policy if exists pgds_profiles_admin_read on pgds_profiles;
 create policy pgds_profiles_admin_read on pgds_profiles
-  for select using (
-    exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.role = 'admin' and p.status = 'approved')
-  );
+  for select using (pgds_is_admin());
 
 drop policy if exists pgds_profiles_self_update on pgds_profiles;
 create policy pgds_profiles_self_update on pgds_profiles
@@ -100,69 +115,47 @@ create policy pgds_profiles_self_update on pgds_profiles
 
 drop policy if exists pgds_profiles_admin_update on pgds_profiles;
 create policy pgds_profiles_admin_update on pgds_profiles
-  for update using (
-    exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.role = 'admin' and p.status = 'approved')
-  );
+  for update using (pgds_is_admin());
 
--- Documents: uploaders see their own; admins see all
 drop policy if exists pgds_docs_uploader_read on pgds_documents;
 create policy pgds_docs_uploader_read on pgds_documents
   for select using (auth.uid() = uploader_id);
 
 drop policy if exists pgds_docs_admin_read on pgds_documents;
 create policy pgds_docs_admin_read on pgds_documents
-  for select using (
-    exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.role = 'admin' and p.status = 'approved')
-  );
+  for select using (pgds_is_admin());
 
 drop policy if exists pgds_docs_insert_self on pgds_documents;
 create policy pgds_docs_insert_self on pgds_documents
-  for insert with check (
-    auth.uid() = uploader_id
-    and exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.status = 'approved')
-  );
+  for insert with check (auth.uid() = uploader_id and pgds_is_approved());
 
 drop policy if exists pgds_docs_admin_update on pgds_documents;
 create policy pgds_docs_admin_update on pgds_documents
-  for update using (
-    exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.role = 'admin' and p.status = 'approved')
-  );
+  for update using (pgds_is_admin());
 
--- Signatures: only owner (admin) can see and modify their own
 drop policy if exists pgds_sigs_owner_all on pgds_signatures;
 create policy pgds_sigs_owner_all on pgds_signatures
   for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 
--- Activity: admins read all
 drop policy if exists pgds_activity_admin_read on pgds_activity;
 create policy pgds_activity_admin_read on pgds_activity
-  for select using (
-    exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.role = 'admin' and p.status = 'approved')
-  );
+  for select using (pgds_is_admin());
 
--- Storage buckets (run separately via Storage UI or these commands)
+-- Storage buckets
 insert into storage.buckets (id, name, public) values ('pgds-pending', 'pgds-pending', false) on conflict do nothing;
 insert into storage.buckets (id, name, public) values ('pgds-signed', 'pgds-signed', false) on conflict do nothing;
 insert into storage.buckets (id, name, public) values ('pgds-rejected', 'pgds-rejected', false) on conflict do nothing;
 
--- Storage policies: authenticated users can upload to pending; admins can move; signers see own files + admins see all
 drop policy if exists pgds_storage_pending_insert on storage.objects;
 create policy pgds_storage_pending_insert on storage.objects
-  for insert to authenticated with check (
-    bucket_id = 'pgds-pending'
-    and exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.status = 'approved')
-  );
+  for insert to authenticated with check (bucket_id = 'pgds-pending' and pgds_is_approved());
 
 drop policy if exists pgds_storage_read_own on storage.objects;
 create policy pgds_storage_read_own on storage.objects
   for select to authenticated using (
     bucket_id in ('pgds-pending','pgds-signed','pgds-rejected')
-    and (
-      owner = auth.uid()
-      or exists (select 1 from pgds_profiles p where p.id = auth.uid() and p.role = 'admin' and p.status = 'approved')
-    )
+    and (owner = auth.uid() or pgds_is_admin())
   );
 
--- Bootstrap: make the FIRST signed-up user an approved admin.
--- After you sign up once with your email, run this manually in SQL editor:
+-- Bootstrap: after signing up, promote yourself:
 --   update pgds_profiles set role='admin', status='approved' where email='YOUR_EMAIL_HERE';

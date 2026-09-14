@@ -11,7 +11,16 @@ const switchText = document.getElementById('switchText');
 const formTitle = document.getElementById('formTitle');
 const formSubtitle = document.getElementById('formSubtitle');
 const nameGroup = document.getElementById('nameGroup');
-const storeGroup = document.getElementById('storeGroup');
+const storeSelectGroup = document.getElementById('storeSelectGroup');
+const storeSelect = document.getElementById('storeSelect');
+
+async function loadStores() {
+  const { data, error } = await sb.from('pgds_stores').select('*').eq('active', true).order('store_number', { ascending: true });
+  if (error || !data) { storeSelect.innerHTML = '<option value="">(could not load stores)</option>'; return; }
+  storeSelect.innerHTML = '<option value="">-- Choose your store --</option>' +
+    data.map(s => `<option value="${s.id}" data-num="${s.store_number}" data-name="${s.store_name.replace(/"/g,'&quot;')}">${s.store_number} - ${s.store_name}</option>`).join('');
+}
+loadStores();
 
 function showMsg(text, type = 'info') {
   msg.innerHTML = `<div class="msg ${type}">${text}</div>`;
@@ -28,7 +37,7 @@ function setMode(newMode) {
     switchText.textContent = 'Already have an account?';
     switchLink.textContent = 'Sign in';
     nameGroup.style.display = 'block';
-    storeGroup.style.display = 'block';
+    storeSelectGroup.style.display = 'block';
   } else {
     formTitle.textContent = 'Sign in to PG Docs Sign';
     formSubtitle.textContent = 'Enter your credentials to continue.';
@@ -36,7 +45,7 @@ function setMode(newMode) {
     switchText.textContent = 'New here?';
     switchLink.textContent = 'Create an account';
     nameGroup.style.display = 'none';
-    storeGroup.style.display = 'none';
+    storeSelectGroup.style.display = 'none';
   }
 }
 
@@ -55,15 +64,22 @@ form.addEventListener('submit', async (e) => {
   try {
     if (mode === 'signup') {
       const fullName = document.getElementById('fullName').value.trim();
-      const storeNumber = document.getElementById('storeNumber').value.trim();
+      const selectedOption = storeSelect.selectedOptions[0];
+      const storeId = storeSelect.value;
+      if (!storeId) throw new Error('Please select your store from the list.');
+      const storeNumber = selectedOption.dataset.num;
+      const storeName = selectedOption.dataset.name;
       const { data, error } = await sb.auth.signUp({
         email, password,
         options: { data: { full_name: fullName } }
       });
       if (error) throw error;
-      // update profile with store_number (trigger created row)
       if (data.user) {
-        await sb.from('pgds_profiles').update({ store_number: storeNumber, full_name: fullName }).eq('id', data.user.id);
+        await sb.from('pgds_profiles').update({
+          store_number: storeNumber,
+          store_name: storeName,
+          full_name: fullName
+        }).eq('id', data.user.id);
       }
       showMsg('Account created! Waiting for admin approval. You will be able to log in once approved.', 'success');
       submitBtn.disabled = false;
