@@ -142,15 +142,21 @@
   .modal-topbar .title { font-size: 14px; font-weight: 700; }
   .modal-topbar button { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; font-size: 12px; }
   .modal-doc { flex: 1; overflow: auto; padding: 20px 20px 100px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  .modal-bottombar { background: #fff; padding: 10px; display: flex; justify-content: center; gap: 8px; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); overflow-x: auto; }
-  .modal-tool-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; background: transparent; color: var(--green-900); border: 1px solid transparent; border-radius: 8px; font-size: 12px; font-weight: 600; min-width: 70px; cursor: pointer; }
+  .modal-bottombar { background: #fff; padding: 8px; display: flex; justify-content: flex-start; gap: 4px; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+  .modal-bottombar::-webkit-scrollbar { height: 4px; }
+  .modal-bottombar::-webkit-scrollbar-thumb { background: var(--green-700); border-radius: 2px; }
+  .modal-tool-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; background: transparent; color: var(--green-900); border: 1px solid transparent; border-radius: 8px; font-size: 11px; font-weight: 600; min-width: 64px; cursor: pointer; flex-shrink: 0; scroll-snap-align: start; }
   .modal-tool-btn:hover { background: var(--green-50); }
   .modal-tool-btn .ic { font-size: 22px; line-height: 1; }
   .modal-tool-btn.primary { background: var(--green-700); color: #fff; }
   .modal-tool-btn.primary:hover { background: var(--green-900); }
-  .pdf-page-wrap { position: relative; margin: 0 auto; }
+  .pdf-page-wrap { position: relative; margin: 0 auto 40px; }
   .pdf-page { position: relative; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); transform-origin: top left; will-change: transform; }
   .pdf-page canvas { display: block; }
+  .page-zoom-controls { position: absolute; top: -34px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; align-items: center; z-index: 5; }
+  .page-zoom-controls .page-num { color: var(--gold-light); font-size: 12px; font-weight: 700; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 12px; }
+  .page-zoom-controls button { background: rgba(255,255,255,0.9); color: var(--green-900); border: 1px solid rgba(0,0,0,0.1); padding: 4px 10px; font-size: 13px; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .page-zoom-controls .page-zoom-badge { background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; color: var(--green-900); min-width: 40px; text-align: center; }
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
   .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
@@ -233,7 +239,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8.3-scroll-tables';
+const APP_VERSION = 'v8.4-perpage';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -1064,8 +1070,7 @@ let sigState = { doc: null, pages: [], overlays: [], mySignatures: [], pdfBytes:
 async function signDoc(id) {
   const { data: docRow, error } = await sb.from('pgds_documents').select('*').eq('id', id).single();
   if (error) return alert(error.message);
-  sigState = { doc: docRow, pages: [], pageWraps: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
-  window.pgdsZoom = 1;
+  sigState = { doc: docRow, pages: [], pageWraps: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [], pageZoom: [] };
   const { data: sigs } = await sb.from('pgds_signatures').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
   sigState.mySignatures = sigs || [];
   await openSigningModal();
@@ -1080,8 +1085,7 @@ async function openSigningModal() {
     <div class="modal-topbar">
       <span class="title">✍️ ${h(doc.title)}</span>
       <div style="display:flex;gap:6px;align-items:center;">
-        <span id="zoomLabel" style="color:#fff;min-width:44px;text-align:center;font-size:12px;font-weight:600;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:12px;">100%</span>
-        <button onclick="zoomFit()" title="Reset zoom" style="padding:6px 10px;">↔️ Fit</button>
+        <button onclick="zoomFit()" title="Reset all pages to 100%" style="padding:6px 10px;">↔️ Fit All</button>
         <button onclick="showOverlaysList()">Items: <span id="overlayCount">0</span></button>
         <button onclick="closeSigningModal()">Close</button>
       </div>
@@ -1432,7 +1436,9 @@ function makeDraggable(el) {
   const move = (e) => {
     if (!dragging && !resizing) return;
     const t = e.touches ? e.touches[0] : e;
-    const z = window.pgdsZoom || 1;
+    // Determine which page this overlay belongs to and use its zoom
+    const ov = sigState.overlays.find(o => o.el === el);
+    const z = ov ? pageZoom(ov.pageIdx) : 1;
     const dx = (t.clientX - sx) / z, dy = (t.clientY - sy) / z;
     if (dragging) { el.style.left = (sl + dx) + 'px'; el.style.top = (st + dy) + 'px'; }
     else if (resizing) {
@@ -1484,6 +1490,17 @@ async function loadDocForSigning() {
     sizer.className = 'pdf-page-wrap';
     sizer.style.width = viewport.width + 'px';
     sizer.style.height = viewport.height + 'px';
+    // Per-page zoom controls
+    const pageIdx = i - 1;
+    const controls = document.createElement('div');
+    controls.className = 'page-zoom-controls';
+    controls.innerHTML = `
+      <span class="page-num">Page ${i}</span>
+      <button onclick="pageZoomOut(${pageIdx})">➖</button>
+      <span class="page-zoom-badge">100%</span>
+      <button onclick="pageZoomIn(${pageIdx})">➕</button>
+    `;
+    sizer.appendChild(controls);
     const wrap = document.createElement('div');
     wrap.className = 'pdf-page';
     wrap.style.width = viewport.width + 'px'; wrap.style.height = viewport.height + 'px';
@@ -1497,79 +1514,79 @@ async function loadDocForSigning() {
     sigState.pageWraps.push(sizer);
     sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
   }
-  applyZoom();
-  attachPinchZoom(modalDoc);
+  // Initialize per-page zoom map + attach pinch per page
+  sigState.pageZoom = new Array(sigState.pages.length).fill(1);
+  sigState.pages.forEach((_, i) => applyPageZoom(i));
+  sigState.pageWraps.forEach((sizer, i) => attachPinchZoomOnPage(sizer, i));
 }
 
-function attachPinchZoom(container) {
+function applyPageZoom(idx) {
+  const z = pageZoom(idx);
+  const page = sigState.pages[idx];
+  const sizer = sigState.pageWraps[idx];
+  if (!page || !sizer) return;
+  page.style.transform = `scale(${z})`;
+  sizer.style.width = (page.offsetWidth * z) + 'px';
+  sizer.style.height = (page.offsetHeight * z) + 'px';
+  const badge = sizer.querySelector('.page-zoom-badge');
+  if (badge) badge.textContent = Math.round(z * 100) + '%';
+}
+
+function attachPinchZoomOnPage(sizer, idx) {
   let pinch = null;
   const dist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-  container.addEventListener('touchstart', (e) => {
+  sizer.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
-      pinch = { d0: dist(e.touches[0], e.touches[1]), z0: window.pgdsZoom || 1 };
+      pinch = { d0: dist(e.touches[0], e.touches[1]), z0: pageZoom(idx) };
       e.preventDefault();
     }
   }, { passive: false });
-  container.addEventListener('touchmove', (e) => {
+  sizer.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && pinch) {
       const d = dist(e.touches[0], e.touches[1]);
       const nz = Math.max(0.5, Math.min(4, pinch.z0 * (d / pinch.d0)));
-      window.pgdsZoom = nz;
-      applyZoom();
+      sigState.pageZoom[idx] = nz;
+      applyPageZoom(idx);
       e.preventDefault();
     }
   }, { passive: false });
-  container.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) pinch = null;
-  });
-  // Trackpad / ctrl+wheel on desktop
-  container.addEventListener('wheel', (e) => {
+  sizer.addEventListener('touchend', () => { pinch = null; });
+  sizer.addEventListener('wheel', (e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const delta = -e.deltaY * 0.005;
-      window.pgdsZoom = Math.max(0.5, Math.min(4, (window.pgdsZoom || 1) + delta));
-      applyZoom();
+      sigState.pageZoom[idx] = Math.max(0.5, Math.min(4, pageZoom(idx) + delta));
+      applyPageZoom(idx);
     }
   }, { passive: false });
 }
 
-// Zoom controls
-window.pgdsZoom = 1;
-function applyZoom() {
-  const z = window.pgdsZoom || 1;
-  const label = document.getElementById('zoomLabel');
-  if (label) label.textContent = Math.round(z * 100) + '%';
-  sigState.pages.forEach((page, i) => {
-    page.style.transform = `scale(${z})`;
-    const sizer = sigState.pageWraps[i];
-    if (sizer) {
-      sizer.style.width = (page.offsetWidth * z) + 'px';
-      sizer.style.height = (page.offsetHeight * z) + 'px';
-    }
-  });
+function zoomFit() {
+  if (!sigState.pageZoom) return;
+  sigState.pageZoom = sigState.pageZoom.map(() => 1);
+  sigState.pages.forEach((_, i) => applyPageZoom(i));
 }
-function zoomIn() { window.pgdsZoom = Math.min(4, (window.pgdsZoom || 1) + 0.25); applyZoom(); }
-function zoomOut() { window.pgdsZoom = Math.max(0.5, (window.pgdsZoom || 1) - 0.25); applyZoom(); }
-function zoomFit() { window.pgdsZoom = 1; applyZoom(); }
+function pageZoomIn(idx) { sigState.pageZoom[idx] = Math.min(4, pageZoom(idx) + 0.25); applyPageZoom(idx); }
+function pageZoomOut(idx) { sigState.pageZoom[idx] = Math.max(0.5, pageZoom(idx) - 0.25); applyPageZoom(idx); }
 
-// Figure out which page is currently visible (center) and return its idx + placement position
+// Get zoom per page (defaults to 1)
+function pageZoom(idx) { return sigState.pageZoom && sigState.pageZoom[idx] || 1; }
+
+// Figure out which page has the biggest visible overlap
 function visiblePageAndPos(ovW, ovH) {
   const container = document.getElementById('modalDoc');
   const containerRect = container.getBoundingClientRect();
-  const visCY = containerRect.top + containerRect.height / 2;
-  const z = window.pgdsZoom || 1;
-  let bestIdx = 0, bestDist = Infinity;
+  let bestIdx = 0, bestOverlap = -1;
   sigState.pages.forEach((p, i) => {
     const r = p.getBoundingClientRect();
-    const pageCY = r.top + r.height / 2;
-    const dist = Math.abs(pageCY - visCY);
-    if (visCY >= r.top && visCY <= r.bottom) { bestIdx = i; bestDist = 0; }
-    else if (bestDist > 0 && dist < bestDist) { bestIdx = i; bestDist = dist; }
+    const overlap = Math.max(0, Math.min(r.bottom, containerRect.bottom) - Math.max(r.top, containerRect.top));
+    if (overlap > bestOverlap) { bestOverlap = overlap; bestIdx = i; }
   });
   const pageWrap = sigState.pages[bestIdx];
   const pageRect = pageWrap.getBoundingClientRect();
   const visCX = containerRect.left + containerRect.width / 2;
-  // (visCenter - pageRect.left) is on-screen distance in scaled pixels; divide by zoom to get unscaled coords
+  const visCY = containerRect.top + containerRect.height / 2;
+  const z = pageZoom(bestIdx);
   const left = Math.max(10, Math.min(pageWrap.offsetWidth - ovW - 10, (visCX - pageRect.left) / z - ovW / 2));
   const top = Math.max(10, Math.min(pageWrap.offsetHeight - ovH - 10, (visCY - pageRect.top) / z - ovH / 2));
   return { pageIdx: bestIdx, pageWrap, left, top };
