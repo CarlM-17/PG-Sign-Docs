@@ -304,7 +304,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v9.3-guide';
+const APP_VERSION = 'v9.5-delete';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -765,7 +765,7 @@ async function loadMyDocs() {
       <td>${ageBadge(age)}${d.signed_at ? `<div style="font-size:11px;color:var(--muted);">until signed</div>` : ''}</td>
       <td><span class="badge ${d.status}">${d.status}</span>${d.status==='rejected'&&d.reject_reason?`<div style="font-size:12px;color:#991b1b;margin-top:4px;">${h(d.reject_reason)}</div>`:''}</td>
       <td class="actions">
-        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadFile('pgds-signed','${d.signed_file_path}')">⬇️ Download signed</button>`:''}
+        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button><button class="secondary" onclick="downloadFile('pgds-signed','${d.signed_file_path}')">👁️ View</button>`:''}
         ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ Preview</button>`:''}
         ${d.status==='pending'?`<button class="danger" onclick="cancelDoc('${d.id}','${d.original_file_path}')">Cancel</button>`:''}
       </td>
@@ -774,6 +774,40 @@ async function loadMyDocs() {
 
 async function downloadFile(bucket, path) {
   await openInAppViewer(bucket, path);
+}
+
+// Make a safe, meaningful filename from a document title
+function safeFileName(title, suffix = 'signed') {
+  const base = String(title || 'document')
+    .replace(/[^a-zA-Z0-9 _.-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 70) || 'document';
+  return `${base} - ${suffix}.pdf`;
+}
+
+// Download straight to the device's Downloads folder (phone or PC)
+async function downloadDirect(bucket, path, filename) {
+  toast('Preparing download...');
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300, { download: filename });
+  if (error) return toast(error.message, 'error');
+  try {
+    const resp = await fetch(data.signedUrl);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 3000);
+    toast('⬇️ Saved to your Downloads folder');
+  } catch (e) {
+    // Fallback: the signed URL already carries Content-Disposition: attachment
+    window.location.href = data.signedUrl;
+  }
 }
 
 // In-app PDF/image viewer modal (never leaves the PWA)
@@ -790,9 +824,7 @@ async function openInAppViewer(bucket, path) {
     <div class="modal-topbar">
       <span class="title">👁️ ${h(path.split('/').pop())}</span>
       <div style="display:flex;gap:8px;">
-        <a href="${url}" download style="text-decoration:none;">
-          <button style="pointer-events:none;">⬇️ Download</button>
-        </a>
+        <button onclick="downloadDirect('${bucket}','${path}','${h(path.split('/').pop())}')">⬇️ Download</button>
         <button onclick="closeInAppViewer()">Close</button>
       </div>
     </div>
@@ -834,10 +866,12 @@ function closeInAppViewer() {
 }
 
 async function cancelDoc(id, path) {
-  if (!confirm('Cancel this pending document?')) return;
-  await sb.storage.from('pgds-pending').remove([path]);
-  const { error } = await sb.from('pgds_documents').delete().eq('id', id);
-  if (error) return alert(error.message);
+  if (!confirm('Cancel this pending document? This cannot be undone.')) return;
+  const { data: deleted, error } = await sb.from('pgds_documents').delete().eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!deleted || !deleted.length) return toast('Could not cancel - permission denied.', 'error');
+  try { await sb.storage.from('pgds-pending').remove([path]); } catch (e) {}
+  toast('Document cancelled');
   loadMyDocs();
 }
 
@@ -1110,6 +1144,7 @@ async function renderApprovedFolders(el) {
               <td>${h(up.full_name || up.email || '-')}</td>
               <td>${d.signed_at ? new Date(d.signed_at).toLocaleString() : '-'}</td>
               <td class="actions">
+                <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
                 <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
                 <button onclick="signDoc('${d.id}')">✏️ Edit</button>
                 <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
@@ -1121,19 +1156,21 @@ async function renderApprovedFolders(el) {
 }
 
 async function deleteApprovedDoc(id, originalPath, signedPath) {
-  if (!confirm('Delete this approved document PERMANENTLY? This cannot be undone.')) return;
+  if (!confirm('Delete this document PERMANENTLY?\n\nIt will disappear for the uploader too. This cannot be undone.')) return;
   try {
-    // remove files
-    const removePaths = [originalPath, signedPath].filter(Boolean);
-    for (const p of removePaths) {
-      const bucket = p === signedPath ? 'pgds-signed' : 'pgds-pending';
-      try { await sb.storage.from(bucket).remove([p]); } catch (e) {}
-    }
-    const { error } = await sb.from('pgds_documents').delete().eq('id', id);
+    // Delete the DB row first and confirm a row actually came back.
+    // Under RLS a blocked delete returns success with zero rows, so we must check.
+    const { data: deleted, error } = await sb.from('pgds_documents').delete().eq('id', id).select('id');
     if (error) throw error;
-    showMsg('msg', 'Document deleted.', 'success');
-    renderAdminView();
-  } catch (err) { alert('Delete failed: ' + (err.message || err)); }
+    if (!deleted || !deleted.length) {
+      throw new Error('Nothing was deleted - the database is blocking it. Run the admin delete policy SQL in Supabase.');
+    }
+    // Row is gone for everyone; now clean up the files (best effort)
+    if (signedPath) { try { await sb.storage.from('pgds-signed').remove([signedPath]); } catch (e) {} }
+    if (originalPath) { try { await sb.storage.from('pgds-pending').remove([originalPath]); } catch (e) {} }
+    toast('Document deleted - removed for the uploader too');
+    renderAdminView(); updateAdminCounts();
+  } catch (err) { toast('Delete failed: ' + (err.message || err), 'error'); }
 }
 
 async function viewAdminDoc(bucket, path) {
