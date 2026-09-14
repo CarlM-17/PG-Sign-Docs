@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="theme-color" content="#0d5c2f">
 <title>PG Docs Sign</title>
 <link rel="manifest" href="/manifest.json">
@@ -218,7 +218,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v7.5-zoom';
+const APP_VERSION = 'v7.6-pinch';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -957,10 +957,8 @@ async function openSigningModal() {
     <div class="modal-topbar">
       <span class="title">✍️ ${h(doc.title)}</span>
       <div style="display:flex;gap:6px;align-items:center;">
-        <button onclick="zoomOut()" title="Zoom out">➖</button>
-        <span id="zoomLabel" style="color:#fff;min-width:52px;text-align:center;font-size:12px;font-weight:600;">100%</span>
-        <button onclick="zoomIn()" title="Zoom in">➕</button>
-        <button onclick="zoomFit()" title="Fit to width">↔️ Fit</button>
+        <span id="zoomLabel" style="color:#fff;min-width:44px;text-align:center;font-size:12px;font-weight:600;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:12px;">100%</span>
+        <button onclick="zoomFit()" title="Reset zoom" style="padding:6px 10px;">↔️ Fit</button>
         <button onclick="showOverlaysList()">Items: <span id="overlayCount">0</span></button>
         <button onclick="closeSigningModal()">Close</button>
       </div>
@@ -1377,6 +1375,39 @@ async function loadDocForSigning() {
     sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
   }
   applyZoom();
+  attachPinchZoom(modalDoc);
+}
+
+function attachPinchZoom(container) {
+  let pinch = null;
+  const dist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      pinch = { d0: dist(e.touches[0], e.touches[1]), z0: window.pgdsZoom || 1 };
+      e.preventDefault();
+    }
+  }, { passive: false });
+  container.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinch) {
+      const d = dist(e.touches[0], e.touches[1]);
+      const nz = Math.max(0.5, Math.min(4, pinch.z0 * (d / pinch.d0)));
+      window.pgdsZoom = nz;
+      applyZoom();
+      e.preventDefault();
+    }
+  }, { passive: false });
+  container.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) pinch = null;
+  });
+  // Trackpad / ctrl+wheel on desktop
+  container.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.005;
+      window.pgdsZoom = Math.max(0.5, Math.min(4, (window.pgdsZoom || 1) + delta));
+      applyZoom();
+    }
+  }, { passive: false });
 }
 
 // Zoom controls
