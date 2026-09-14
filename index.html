@@ -121,6 +121,10 @@
   .store-opt span { color: var(--text); }
   .store-chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .store-chip { background: var(--green-100); color: var(--green-900); border: 1px solid var(--green-500); border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .req-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 12px; border-radius: 8px; font-size: 13px; flex-wrap: wrap; }
+  .req-row.pending { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+  .req-row.rejected { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .req-row button { padding: 4px 10px; font-size: 11px; }
   /* Remarks */
   .remarks-cell { min-width: 220px; max-width: 300px; }
   .remark-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; }
@@ -314,7 +318,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v10-multistore';
+const APP_VERSION = 'v10.2-store-requests';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -553,6 +557,16 @@ function guideHTML() {
       </ol>
     </div>
 
+    <div class="guide-steps">
+      <h4>🏪 Handling more than one store</h4>
+      <ol>
+        <li>At signup, <strong>tick every store you handle</strong> - you can select more than one.</li>
+        <li>Once approved, a <strong>"Which store is this document for?"</strong> dropdown appears above the document title. Pick the correct store for every upload.</li>
+        <li>Opened a new branch, or missed a store at signup? Use <strong>My stores → Request additional store</strong> on your dashboard. The signer reviews and approves it - you will see the status right there.</li>
+        <li>If the store you need is not on the list at all, ask the signer to create it first - new stores are added by the admin.</li>
+      </ol>
+    </div>
+
     <div class="guide-status">
       <h4>📊 What the statuses mean</h4>
       <div class="guide-status-row"><span class="badge pending">Pending</span><span>Waiting in the signer's queue. You may still cancel it.</span></div>
@@ -647,6 +661,13 @@ async function renderStaff() {
       </div>
       <div id="staffKpis" class="kpi-row"></div>
       <div class="box">
+        <h3>My stores</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">These are the stores you can upload for. Need another one? Request it - the signer will approve it.</p>
+        <div class="store-chips" id="myStoreChips">${storeChips(currentUser.stores)}</div>
+        <div id="myStoreRequests"></div>
+        <button class="secondary" style="margin-top:10px;" onclick="openStoreRequestDialog()">➕ Request additional store</button>
+      </div>
+      <div class="box">
         <h3>Upload documents for signature</h3>
         <div class="upload-note">
           <strong>Note:</strong> Please file / upload documents <strong>per title or per document name</strong>. If a single document has multiple pages or photos, add them all together here — they will be merged into one signed file.
@@ -697,6 +718,7 @@ async function renderStaff() {
   selectedFiles = [];
   updateFileList();
   loadStaffKpis();
+  loadMyStoreRequests();
   loadMyDocs();
 }
 
@@ -711,6 +733,88 @@ async function loadStaffKpis() {
     <div class="kpi gold"><div class="label">My Pending</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h' : 'All caught up'}</div></div>
     <div class="kpi"><div class="label">Approved</div><div class="value">${approved.length}</div><div class="sub">Total signed</div></div>
     <div class="kpi blue"><div class="label">Avg turnaround</div><div class="value">${avgTurnaround.toFixed(1)}h</div><div class="sub">From upload to signing</div></div>`;
+}
+
+// Staff: show their own store requests under the assigned chips
+async function loadMyStoreRequests() {
+  const el = document.getElementById('myStoreRequests');
+  if (!el) return;
+  const { data } = await sb.from('pgds_store_requests')
+    .select('*, pgds_stores(store_number, store_name)')
+    .eq('user_id', currentUser.id)
+    .neq('status', 'approved')
+    .order('created_at', { ascending: false });
+  if (!data || !data.length) { el.innerHTML = ''; return; }
+  el.innerHTML = data.map(r => {
+    const s = r.pgds_stores || {};
+    const label = `${h(s.store_number || '?')} - ${h(s.store_name || '')}`;
+    if (r.status === 'pending') {
+      return `<div class="req-row pending">
+        <span>⏳ <strong>${label}</strong> - waiting for approval</span>
+        <button class="danger" onclick="withdrawStoreRequest('${r.id}')">Withdraw</button>
+      </div>`;
+    }
+    return `<div class="req-row rejected">
+      <span>❌ <strong>${label}</strong> - not approved${r.reject_reason ? ': ' + h(r.reject_reason) : ''}</span>
+      <button class="secondary" onclick="withdrawStoreRequest('${r.id}')">Dismiss</button>
+    </div>`;
+  }).join('');
+}
+
+async function withdrawStoreRequest(id) {
+  const { error } = await sb.from('pgds_store_requests').delete().eq('id', id);
+  if (error) return toast(error.message, 'error');
+  toast('Request removed');
+  loadMyStoreRequests();
+}
+
+// Staff: request an additional store (admin must approve)
+async function openStoreRequestDialog() {
+  closePopover();
+  const [{ data: allStores }, { data: myReqs }] = await Promise.all([
+    sb.from('pgds_stores').select('*').eq('active', true).order('store_number', { ascending: true }),
+    sb.from('pgds_store_requests').select('store_id').eq('user_id', currentUser.id).eq('status', 'pending')
+  ]);
+  const assigned = new Set((currentUser.stores || []).map(s => s.id).filter(Boolean));
+  const requested = new Set((myReqs || []).map(r => r.store_id));
+  const available = (allStores || []).filter(s => !assigned.has(s.id) && !requested.has(s.id));
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Request additional store</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Tick the store(s) you also handle. The signer will review and approve your request. If a newly opened store is not on the list, ask the signer to create it first.</p>
+    ${available.length ? `
+      <div class="store-picker" id="reqStorePicker">
+        ${available.map(s => `
+          <label class="store-opt">
+            <input type="checkbox" value="${s.id}">
+            <span>${h(s.store_number)} - ${h(s.store_name)}</span>
+          </label>`).join('')}
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label>Reason (optional)</label>
+        <input type="text" id="reqReason" placeholder="e.g. Newly opened branch assigned to me">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button onclick="submitStoreRequest()">📨 Send request</button>
+        <button class="secondary" onclick="closePopover()">Cancel</button>
+      </div>
+    ` : '<p style="font-size:13px;color:var(--muted);">You already have, or have already requested, every available store.</p>'}`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+async function submitStoreRequest() {
+  const picked = Array.from(document.querySelectorAll('#reqStorePicker input:checked'));
+  if (!picked.length) return toast('Tick at least one store.', 'warn');
+  const reason = (document.getElementById('reqReason') || {}).value || '';
+  const { error } = await sb.from('pgds_store_requests').insert(
+    picked.map(p => ({ user_id: currentUser.id, store_id: p.value, reason: reason.trim() || null }))
+  );
+  if (error) return toast(error.message, 'error');
+  closePopover();
+  toast(`📨 Request sent for ${picked.length} store(s)`);
+  loadMyStoreRequests();
 }
 
 function handleFilePick(e) {
@@ -950,6 +1054,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">📋 Signing Queue <span id="docsCount"></span></div>
         <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved Docs</div>
         <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
+        <div class="tab ${adminView==='store-requests'?'active':''}" data-v="store-requests">🏪 Store Requests <span id="storeReqCount"></span></div>
         <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
         <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
         <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Admin Staff Guide</div>
@@ -969,6 +1074,8 @@ async function updateAdminCounts() {
   ]);
   const pc = document.getElementById('pendingCount'); if (pc) pc.textContent = pu ? `(${pu})` : '';
   const dc = document.getElementById('docsCount'); if (dc) dc.textContent = pd ? `(${pd})` : '';
+  const { count: sr } = await sb.from('pgds_store_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+  const sc = document.getElementById('storeReqCount'); if (sc) sc.textContent = sr ? `(${sr})` : '';
 }
 
 async function renderAdminView() {
@@ -979,6 +1086,7 @@ async function renderAdminView() {
   if (adminView === 'documents') return renderPendingQueue(el);
   if (adminView === 'approved-folders') return renderApprovedFolders(el);
   if (adminView === 'rejected') return renderRejected(el);
+  if (adminView === 'store-requests') return renderStoreRequests(el);
   if (adminView === 'stores') return renderStores(el);
   if (adminView === 'signatures') return renderSignaturesMgr(el);
   if (adminView === 'guide') return el.innerHTML = guideHTML();
@@ -1339,6 +1447,57 @@ async function rejectUser(id) {
   const { error } = await sb.from('pgds_profiles').update({ status: 'rejected', reject_reason: reason }).eq('id', id);
   if (error) return showMsg('msg', error.message, 'error');
   showMsg('msg', 'User rejected.', 'success');
+  renderAdminView(); updateAdminCounts();
+}
+
+async function renderStoreRequests(el) {
+  el.innerHTML = '<p class="empty">Loading requests...</p>';
+  const { data, error } = await sb.from('pgds_store_requests')
+    .select('*, pgds_stores(store_number, store_name)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
+  if (!data.length) return el.innerHTML = '<p class="empty">🏪 No pending store requests.</p>';
+  const uids = [...new Set(data.map(r => r.user_id))];
+  const { data: profs } = await sb.from('pgds_profiles').select('id, full_name, email').in('id', uids);
+  const pmap = {}; (profs || []).forEach(p => pmap[p.id] = p);
+  const assigns = await fetchStoreAssignments(uids);
+  el.innerHTML = `<table><thead><tr><th>Requested by</th><th>Currently handles</th><th>Requesting</th><th>Reason</th><th>When</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(r => { const u = pmap[r.user_id] || {}; const s = r.pgds_stores || {}; return `<tr>
+      <td><strong>${h(u.full_name || u.email || '-')}</strong><div style="font-size:11px;color:var(--muted);">${h(u.email || '')}</div></td>
+      <td><div class="store-chips">${storeChips(assigns[r.user_id])}</div></td>
+      <td><span class="store-chip" style="background:#fef3c7;border-color:var(--gold);color:#78350f;">${h(s.store_number || '?')} - ${h(s.store_name || '')}</span></td>
+      <td style="font-size:12px;color:var(--muted);">${h(r.reason || '-')}</td>
+      <td>${new Date(r.created_at).toLocaleString()}</td>
+      <td class="actions">
+        <button onclick="approveStoreRequest('${r.id}','${r.user_id}','${r.store_id}')">✓ Approve</button>
+        <button class="danger" onclick="rejectStoreRequest('${r.id}')">✕ Reject</button>
+      </td>
+    </tr>`; }).join('')}</tbody></table>`;
+}
+
+async function approveStoreRequest(reqId, userId, storeId) {
+  try {
+    const { error: insErr } = await sb.from('pgds_user_stores').insert({ user_id: userId, store_id: storeId });
+    // Ignore a duplicate-key error - it just means they already have it
+    if (insErr && !String(insErr.message).toLowerCase().includes('duplicate')) throw insErr;
+    const { error } = await sb.from('pgds_store_requests').update({
+      status: 'approved', decided_by: currentUser.id, decided_at: new Date().toISOString()
+    }).eq('id', reqId);
+    if (error) throw error;
+    toast('✓ Store assigned');
+    renderAdminView(); updateAdminCounts();
+  } catch (err) { toast(err.message || err, 'error'); }
+}
+
+async function rejectStoreRequest(reqId) {
+  const reason = prompt('Reason for rejecting this store request (optional):') || '';
+  const { error } = await sb.from('pgds_store_requests').update({
+    status: 'rejected', reject_reason: reason.trim() || null,
+    decided_by: currentUser.id, decided_at: new Date().toISOString()
+  }).eq('id', reqId);
+  if (error) return toast(error.message, 'error');
+  toast('Request rejected');
   renderAdminView(); updateAdminCounts();
 }
 
