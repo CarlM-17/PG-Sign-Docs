@@ -28,9 +28,12 @@
   .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
   .brand-text .title { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
   .brand-text .subtitle { font-size: 11px; color: var(--gold-light); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
-  .header-user { margin-top: 6px; padding-left: 60px; font-size: 13px; color: #fff; display: flex; flex-direction: column; gap: 1px; }
-  .header-user .uname { font-weight: 700; font-size: 14px; color: #fff; }
-  .header-user .ustore { font-size: 12px; color: var(--gold-light); font-weight: 600; }
+  .header-user { margin-top: 6px; font-size: 13px; color: #fff; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+  .header-user .uname { font-weight: 700; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .header-user .uname svg { flex-shrink: 0; }
+  .header-user .uname:hover .edit-icon { opacity: 1; }
+  .header-user .edit-icon { opacity: 0.5; font-size: 11px; color: var(--gold-light); }
+  .header-user .ustore { font-size: 12px; color: var(--gold-light); font-weight: 600; margin-left: 26px; }
   .menu-btn { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 20px; padding: 0; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .menu-btn:hover { background: rgba(255,255,255,0.25); }
   .menu-drop { position: absolute; top: 100%; right: 12px; margin-top: 6px; background: #fff; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); overflow: hidden; z-index: 100; min-width: 170px; border: 1px solid var(--border); }
@@ -225,7 +228,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v8-header';
+const APP_VERSION = 'v8.1-header';
 console.log('PG Docs Sign', APP_VERSION);
 
 // Register service worker for PWA
@@ -357,9 +360,15 @@ async function handleAuth(e) {
 }
 
 // ---------- STAFF ----------
+function niceName() {
+  if (currentUser.full_name && currentUser.full_name.trim()) return currentUser.full_name;
+  const local = (currentUser.email || '').split('@')[0].replace(/[._-]/g, ' ');
+  return local.split(' ').filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ') || 'User';
+}
 function headerHTML(subtitle) {
   const storeLabel = [currentUser.store_number && ('Store #' + currentUser.store_number), currentUser.store_name].filter(Boolean).join(' - ') || '';
-  const uname = currentUser.full_name || currentUser.email;
+  const uname = niceName();
+  const personSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#f7e08a" style="filter:drop-shadow(0 1px 1px rgba(0,0,0,0.3));"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.5h19.6v-2.5c0-3.3-6.5-4.9-9.8-4.9z"/></svg>`;
   return `<div class="header">
     <div class="header-row1">
       <div class="brand">
@@ -367,20 +376,34 @@ function headerHTML(subtitle) {
         <div class="brand-text">
           <span class="title">PG Docs Sign</span>
           <span class="subtitle">${subtitle}</span>
+          <div class="header-user" style="margin-top:4px;">
+            <span class="uname" onclick="editMyName()">${personSvg} ${h(uname)} <span class="edit-icon">✏️</span></span>
+            ${storeLabel ? `<span class="ustore" style="margin-left:26px;">${h(storeLabel)}</span>` : ''}
+          </div>
         </div>
       </div>
       <button class="menu-btn" onclick="toggleMenu(event)" title="Menu">⋮</button>
     </div>
-    <div class="header-user">
-      <span class="uname">👤 ${h(uname)}</span>
-      ${storeLabel ? `<span class="ustore">${h(storeLabel)}</span>` : ''}
-    </div>
     <div id="headerMenu" style="display:none;" class="menu-drop">
+      <button onclick="editMyName()">✏️ Edit my name</button>
+      <hr>
       <button onclick="refreshApp()">🔄 Refresh</button>
       <hr>
       <button onclick="logout()">🚪 Logout</button>
     </div>
   </div>`;
+}
+
+async function editMyName() {
+  const current = currentUser.full_name || '';
+  const newName = prompt('Enter your full name:', current);
+  if (newName === null) return;
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+  const { error } = await sb.from('pgds_profiles').update({ full_name: trimmed }).eq('id', currentUser.id);
+  if (error) return alert(error.message);
+  currentUser.full_name = trimmed;
+  if (currentUser.role === 'admin') renderAdmin(); else renderStaff();
 }
 function toggleMenu(e) {
   e.stopPropagation();
