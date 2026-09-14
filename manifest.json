@@ -1,0 +1,14 @@
+{
+  "name": "PG Docs Sign",
+  "short_name": "PG Sign",
+  "description": "Digital signature workflow for 31 stores",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0fdf4",
+  "theme_color": "#0d5c2f",
+  "icons": [
+    { "src": "/SignDocs_icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/SignDocs_icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
