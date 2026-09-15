@@ -135,6 +135,48 @@
   .remark-actions { display: flex; gap: 4px; margin-top: 6px; }
   .remark-actions button { padding: 3px 8px; font-size: 11px; }
   .staff-remark { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 12px; color: #78350f; white-space: pre-wrap; }
+  /* To-do and notes */
+  .todo-form { display: grid; grid-template-columns: minmax(0, 1fr) 160px 120px auto; gap: 8px; }
+  .todo-filters { display: flex; gap: 6px; margin-bottom: 10px; }
+  .todo-filters button { padding: 6px 16px; font-size: 12px; }
+  .todo-list { background: var(--card); border-radius: 10px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); overflow: hidden; }
+  .todo-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid #f1f5f9; }
+  .todo-row:first-child { border-top: none; }
+  .todo-row input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--green-700); cursor: pointer; }
+  .todo-main { flex: 1; min-width: 0; }
+  .todo-title { font-size: 14px; color: var(--text); word-break: break-word; }
+  .todo-row.done .todo-title { text-decoration: line-through; color: var(--muted); }
+  .todo-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .todo-meta:empty { display: none; }
+  .todo-row > button { padding: 6px 10px; font-size: 12px; flex-shrink: 0; }
+  .due-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .due-over { background: #fee2e2; color: #991b1b; }
+  .due-today { background: #fef3c7; color: #92400e; }
+  .due-later { background: #dbeafe; color: #1e40af; }
+  .due-done { background: #f1f5f9; color: var(--muted); }
+  .notes-toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
+  .notes-toolbar input { flex: 1; }
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .note-card { border-radius: 12px; padding: 14px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 8px rgba(6,78,59,0.05); cursor: pointer; display: flex; flex-direction: column; min-height: 130px; }
+  .note-card:hover { box-shadow: 0 4px 14px rgba(6,78,59,0.14); }
+  .note-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .note-title { font-weight: 700; color: var(--green-900); font-size: 14px; word-break: break-word; }
+  .note-pin { background: transparent; border: none; padding: 0 2px; font-size: 16px; opacity: .35; filter: grayscale(1); flex-shrink: 0; }
+  .note-pin:hover { background: transparent; transform: none; box-shadow: none; opacity: .75; }
+  .note-pin.on { opacity: 1; filter: none; }
+  .note-body { font-size: 13px; color: #374151; margin-top: 6px; white-space: pre-wrap; word-break: break-word; flex: 1; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+  .note-foot { font-size: 11px; color: var(--muted); margin-top: 10px; }
+  .note-colors { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .note-swatch { width: 30px; height: 30px; border-radius: 15px; border: 2px solid #d1d5db; cursor: pointer; }
+  .note-swatch.active { border-color: var(--green-700); box-shadow: 0 0 0 3px var(--green-100); }
+  .todo-reminder { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2500; background: var(--green-900); color: #fff; border: 1px solid var(--gold); border-radius: 12px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); max-width: 92vw; font-size: 14px; animation: toastIn .25s ease; }
+  .todo-reminder button { background: var(--gold); color: #1a1a1a; padding: 6px 14px; font-size: 13px; flex-shrink: 0; }
+  .todo-reminder .close-x { background: transparent; color: #fff; padding: 0 6px; font-size: 20px; }
+  @media (max-width: 720px) {
+    .todo-form { grid-template-columns: 1fr 1fr; }
+    .todo-form #todoTitle, .todo-form button { grid-column: 1 / -1; }
+    .notes-grid { grid-template-columns: 1fr 1fr; }
+  }
   /* Guide */
   .guide-hero { background: linear-gradient(135deg, var(--green-900), var(--green-700)); border-radius: 14px; padding: 22px; display: flex; gap: 18px; align-items: center; margin-bottom: 20px; border-bottom: 4px solid var(--gold); box-shadow: 0 4px 16px rgba(6,78,59,0.2); }
   .guide-hero img { width: 64px; height: 64px; border-radius: 32px; border: 3px solid var(--gold); background: #fff; flex-shrink: 0; }
@@ -325,7 +367,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v10.6-credit';
+const APP_VERSION = 'v11-todo-notes';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -411,7 +453,7 @@ async function route() {
   currentUser = { id: session.user.id, email: session.user.email, ...profile };
   // Load every store this user is allowed to upload for
   currentUser.stores = await loadMyStores(session.user.id, profile);
-  if (profile.role === 'admin') renderAdmin(); else renderStaff();
+  if (profile.role === 'admin') renderAdmin(); else { renderStaff(); showTodoReminder(); }
 }
 
 async function loadMyStores(userId, profile) {
@@ -505,6 +547,285 @@ async function handleAuth(e) {
 }
 
 // ---------- STAFF ----------
+// ---------- STAFF TABS ----------
+function staffTabsHTML() {
+  const t = (v, label) => `<div class="tab ${staffView === v ? 'active' : ''}" data-sv="${v}">${label}</div>`;
+  return `<div class="tabs">${t('docs', '📄 My Documents')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
+}
+
+// ---------- TO-DO (private per staff) ----------
+let todoFilter = 'active';
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function fmtDue(s) {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${Number(m)}/${Number(d)}/${y}`;
+}
+
+async function renderTodoPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  const { data, error } = await sb.from('pgds_todos').select('*')
+    .eq('user_id', currentUser.id)
+    .order('done', { ascending: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false });
+  if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  const all = data || [];
+  const today = localToday();
+  const open = all.filter(t => !t.done);
+  const dueToday = open.filter(t => t.due_date === today).length;
+  const overdue = open.filter(t => t.due_date && t.due_date < today).length;
+  const shown = all.filter(t => todoFilter === 'all' ? true : todoFilter === 'done' ? t.done : !t.done);
+  pane.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Open tasks</div><div class="value">${open.length}</div><div class="sub">${all.length - open.length} completed</div></div>
+      <div class="kpi gold"><div class="label">Due today</div><div class="value">${dueToday}</div><div class="sub">${fmtDue(today)}</div></div>
+      <div class="kpi red"><div class="label">Overdue</div><div class="value">${overdue}</div><div class="sub">Past due date</div></div>
+    </div>
+    <div class="box">
+      <h3>Add a task</h3>
+      <form id="todoForm" class="todo-form">
+        <input type="text" id="todoTitle" placeholder="e.g. Follow up Area Manager signature" maxlength="200">
+        <input type="date" id="todoDue" title="Due date (optional)">
+        <select id="todoPriority" title="Priority"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option></select>
+        <button type="submit">➕ Add</button>
+      </form>
+    </div>
+    <div class="todo-filters">
+      ${['active', 'done', 'all'].map(f => `<button class="${todoFilter === f ? '' : 'secondary'}" onclick="setTodoFilter('${f}')">${f === 'active' ? 'Active' : f === 'done' ? 'Done' : 'All'}</button>`).join('')}
+    </div>
+    <div class="todo-list">
+      ${shown.length ? shown.map(todoRowHTML).join('') : `<p class="empty">${todoFilter === 'done' ? 'No completed tasks yet.' : 'No tasks here. Add one above.'}</p>`}
+    </div>`;
+  document.getElementById('todoForm').onsubmit = addTodo;
+}
+
+function todoRowHTML(t) {
+  const today = localToday();
+  let due = '';
+  if (t.due_date) {
+    const cls = t.done ? 'due-done' : t.due_date < today ? 'due-over' : t.due_date === today ? 'due-today' : 'due-later';
+    const label = t.done ? fmtDue(t.due_date) : t.due_date < today ? 'Overdue ' + fmtDue(t.due_date) : t.due_date === today ? 'Today' : 'Due ' + fmtDue(t.due_date);
+    due = `<span class="due-chip ${cls}">${label}</span>`;
+  }
+  const prio = t.priority && t.priority !== 'normal' ? `<span class="badge ${t.priority}">${t.priority}</span>` : '';
+  return `<div class="todo-row ${t.done ? 'done' : ''}">
+    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)" aria-label="Mark done">
+    <div class="todo-main">
+      <div class="todo-title">${h(t.title)}</div>
+      <div class="todo-meta">${due}${prio}</div>
+    </div>
+    ${t.done ? '' : `<button class="secondary" onclick="editTodo('${t.id}')" title="Edit">✏️</button>`}
+    <button class="danger" onclick="deleteTodo('${t.id}')" title="Delete">🗑</button>
+  </div>`;
+}
+
+function setTodoFilter(f) { todoFilter = f; renderTodoPane(); }
+
+async function addTodo(e) {
+  e.preventDefault();
+  const title = document.getElementById('todoTitle').value.trim();
+  if (!title) return toast('Type a task first.', 'warn');
+  const due_date = document.getElementById('todoDue').value || null;
+  const priority = document.getElementById('todoPriority').value;
+  const { error } = await sb.from('pgds_todos').insert({ user_id: currentUser.id, title, due_date, priority });
+  if (error) return toast(error.message, 'error');
+  toast('✓ Task added');
+  renderTodoPane();
+}
+
+async function toggleTodo(id, done) {
+  const { error } = await sb.from('pgds_todos').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', id);
+  if (error) return toast(error.message, 'error');
+  renderTodoPane();
+}
+
+async function deleteTodo(id) {
+  if (!confirm('Delete this task?')) return;
+  const { error } = await sb.from('pgds_todos').delete().eq('id', id);
+  if (error) return toast(error.message, 'error');
+  toast('Task deleted');
+  renderTodoPane();
+}
+
+async function editTodo(id) {
+  closePopover();
+  const { data: t, error } = await sb.from('pgds_todos').select('*').eq('id', id).single();
+  if (error || !t) return toast('Could not load task.', 'error');
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Edit task</h4>
+    <div class="form-group"><label>Task</label><input type="text" id="editTodoTitle" maxlength="200" value="${h(t.title)}"></div>
+    <div class="row2">
+      <div class="form-group"><label>Due date</label><input type="date" id="editTodoDue" value="${h(t.due_date || '')}"></div>
+      <div class="form-group"><label>Priority</label><select id="editTodoPriority">
+        ${['low', 'normal', 'high'].map(p => `<option value="${p}" ${t.priority === p ? 'selected' : ''}>${p[0].toUpperCase() + p.slice(1)}</option>`).join('')}
+      </select></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveTodoEdit('${t.id}')">💾 Save</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+
+async function saveTodoEdit(id) {
+  const title = document.getElementById('editTodoTitle').value.trim();
+  if (!title) return toast('Task cannot be empty.', 'warn');
+  const { error } = await sb.from('pgds_todos').update({
+    title,
+    due_date: document.getElementById('editTodoDue').value || null,
+    priority: document.getElementById('editTodoPriority').value
+  }).eq('id', id);
+  if (error) return toast(error.message, 'error');
+  closePopover();
+  toast('✓ Task updated');
+  renderTodoPane();
+}
+
+// Once per browser session, after a staff login: remind about due / overdue tasks
+async function showTodoReminder() {
+  try {
+    if (sessionStorage.getItem('pgds_todo_reminded')) return;
+    sessionStorage.setItem('pgds_todo_reminded', '1');
+  } catch (e) {}
+  const today = localToday();
+  const { data } = await sb.from('pgds_todos').select('due_date')
+    .eq('user_id', currentUser.id).eq('done', false)
+    .not('due_date', 'is', null).lte('due_date', today);
+  const list = data || [];
+  if (!list.length) return;
+  const overdue = list.filter(t => t.due_date < today).length;
+  const dueToday = list.length - overdue;
+  const parts = [];
+  if (dueToday) parts.push(`${dueToday} task${dueToday > 1 ? 's' : ''} due today`);
+  if (overdue) parts.push(`${overdue} overdue`);
+  const el = document.createElement('div');
+  el.className = 'todo-reminder';
+  el.innerHTML = `<span>⏰ You have ${parts.join(' and ')}.</span>
+    <button onclick="openTodoFromReminder()">View</button>
+    <button class="close-x" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>`;
+  document.body.appendChild(el);
+}
+function openTodoFromReminder() {
+  document.querySelectorAll('.todo-reminder').forEach(e => e.remove());
+  staffView = 'todo'; todoFilter = 'active';
+  renderStaff();
+}
+
+// ---------- NOTES (private per staff) ----------
+let notesSearch = '';
+const NOTE_COLORS = { white: '#ffffff', yellow: '#fef3c7', green: '#d1fadf', blue: '#dbeafe', pink: '#fce7f3', purple: '#ede9fe' };
+
+async function renderNotesPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  const { data, error } = await sb.from('pgds_notes').select('*')
+    .eq('user_id', currentUser.id)
+    .order('pinned', { ascending: false })
+    .order('updated_at', { ascending: false });
+  if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  window.__pgdsNotes = data || [];
+  pane.innerHTML = `
+    <div class="notes-toolbar">
+      <input type="text" id="notesSearch" placeholder="Search notes" value="${h(notesSearch)}">
+      <button onclick="openNoteEditor()">➕ New note</button>
+    </div>
+    <div id="notesGrid" class="notes-grid"></div>`;
+  const s = document.getElementById('notesSearch');
+  s.oninput = () => { notesSearch = s.value; drawNotesGrid(); };
+  drawNotesGrid();
+}
+
+function drawNotesGrid() {
+  const grid = document.getElementById('notesGrid'); if (!grid) return;
+  const q = notesSearch.trim().toLowerCase();
+  const list = (window.__pgdsNotes || []).filter(n => !q || (n.title || '').toLowerCase().includes(q) || (n.body || '').toLowerCase().includes(q));
+  if (!list.length) {
+    grid.innerHTML = `<p class="empty" style="grid-column:1/-1;">${q ? 'No notes match your search.' : 'No notes yet. Tap New note to start.'}</p>`;
+    return;
+  }
+  grid.innerHTML = list.map(n => `
+    <div class="note-card" style="background:${NOTE_COLORS[n.color] || NOTE_COLORS.white}" onclick="openNoteEditor('${n.id}')">
+      <div class="note-head">
+        <span class="note-title">${h(n.title || 'Untitled')}</span>
+        <button class="note-pin ${n.pinned ? 'on' : ''}" title="${n.pinned ? 'Unpin' : 'Pin to top'}" onclick="event.stopPropagation();togglePinNote('${n.id}', ${!n.pinned})">📌</button>
+      </div>
+      <div class="note-body">${h(n.body || '')}</div>
+      <div class="note-foot">${n.pinned ? 'Pinned · ' : ''}${new Date(n.updated_at || n.created_at).toLocaleDateString()}</div>
+    </div>`).join('');
+}
+
+function openNoteEditor(id) {
+  closePopover();
+  const n = id ? (window.__pgdsNotes || []).find(x => x.id === id) : null;
+  const color = n ? (n.color || 'white') : 'white';
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>${n ? 'Edit note' : 'New note'}</h4>
+    <input type="text" id="noteTitle" placeholder="Title" maxlength="120" value="${h(n ? n.title : '')}" style="margin-bottom:8px;">
+    <textarea id="noteBody" placeholder="Write your note..." style="min-height:140px;">${h(n ? n.body : '')}</textarea>
+    <div class="note-colors" id="noteColors">
+      ${Object.entries(NOTE_COLORS).map(([k, v]) => `<span class="note-swatch ${k === color ? 'active' : ''}" data-color="${k}" style="background:${v}" title="${k}" onclick="pickNoteColor(this)"></span>`).join('')}
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-top:10px;">
+      <input type="checkbox" id="notePinned" style="width:auto;" ${n && n.pinned ? 'checked' : ''}> Pin to top
+    </label>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button onclick="saveNote(${n ? `'${n.id}'` : 'null'})">💾 Save</button>
+      ${n ? `<button class="danger" onclick="deleteNote('${n.id}')">🗑 Delete</button>` : ''}
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+  setTimeout(() => { const t = document.getElementById(n ? 'noteBody' : 'noteTitle'); if (t) t.focus(); }, 50);
+}
+
+function pickNoteColor(el) {
+  document.querySelectorAll('#noteColors .note-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+async function saveNote(id) {
+  const title = document.getElementById('noteTitle').value.trim();
+  const body = document.getElementById('noteBody').value.trim();
+  if (!title && !body) return toast('Write something first.', 'warn');
+  const active = document.querySelector('#noteColors .note-swatch.active');
+  const row = {
+    title, body,
+    color: active ? active.dataset.color : 'white',
+    pinned: document.getElementById('notePinned').checked,
+    updated_at: new Date().toISOString()
+  };
+  const { error } = id
+    ? await sb.from('pgds_notes').update(row).eq('id', id)
+    : await sb.from('pgds_notes').insert({ ...row, user_id: currentUser.id });
+  if (error) return toast(error.message, 'error');
+  closePopover();
+  toast(id ? '✓ Note updated' : '✓ Note saved');
+  renderNotesPane();
+}
+
+async function togglePinNote(id, pinned) {
+  const { error } = await sb.from('pgds_notes').update({ pinned }).eq('id', id);
+  if (error) return toast(error.message, 'error');
+  renderNotesPane();
+}
+
+async function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  const { error } = await sb.from('pgds_notes').delete().eq('id', id);
+  if (error) return toast(error.message, 'error');
+  closePopover();
+  toast('Note deleted');
+  renderNotesPane();
+}
+
 // ---------- GUIDE ----------
 function guideHTML() {
   const rules = [
@@ -664,14 +985,23 @@ function toggleMenu(e) {
 }
 
 async function renderStaff() {
+  if (staffView === 'todo' || staffView === 'notes') {
+    app.innerHTML = `
+      ${headerHTML(staffView === 'todo' ? 'To-Do' : 'Notes')}
+      <div class="container">
+        ${staffTabsHTML()}
+        <div id="staffPane"><p class="empty">Loading...</p></div>
+      </div>`;
+    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+    centerActiveTabs();
+    if (staffView === 'todo') renderTodoPane(); else renderNotesPane();
+    return;
+  }
   if (staffView === 'guide') {
     app.innerHTML = `
       ${headerHTML('Guide')}
       <div class="container">
-        <div class="tabs">
-          <div class="tab" data-sv="docs">📄 My Documents</div>
-          <div class="tab active" data-sv="guide">📖 Admin Staff Guide</div>
-        </div>
+        ${staffTabsHTML()}
         ${guideHTML()}
       </div>`;
     document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
@@ -681,10 +1011,7 @@ async function renderStaff() {
   app.innerHTML = `
     ${headerHTML('My Documents')}
     <div class="container">
-      <div class="tabs">
-        <div class="tab active" data-sv="docs">📄 My Documents</div>
-        <div class="tab" data-sv="guide">📖 Admin Staff Guide</div>
-      </div>
+      ${staffTabsHTML()}
       <div id="staffKpis" class="kpi-row"></div>
       <div class="box">
         <h3>My stores</h3>
@@ -2498,7 +2825,11 @@ function closeSigningModal() {
   sigState = { doc: null, pages: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [] };
 }
 
-async function logout() { await sb.auth.signOut(); currentUser = null; route(); }
+async function logout() {
+  try { sessionStorage.removeItem('pgds_todo_reminded'); } catch (e) {}
+  document.querySelectorAll('.todo-reminder').forEach(e => e.remove());
+  await sb.auth.signOut(); currentUser = null; staffView = 'docs'; route();
+}
 function refreshApp() { window.location.reload(); }
 
 // Auto-wrap every table in a horizontal-scroll container so mobile users can pan across columns
