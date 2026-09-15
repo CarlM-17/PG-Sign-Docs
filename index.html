@@ -164,6 +164,10 @@
   .guide-status-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-top: 1px solid #f1f5f9; font-size: 13px; color: #374151; }
   .guide-status-row:first-of-type { border-top: none; }
   .guide-status-row > span:first-child { flex-shrink: 0; min-width: 76px; }
+  .guide-credit { text-align: center; padding: 18px 12px 28px; border-top: 1px solid rgba(13,92,47,0.15); margin-top: 4px; }
+  .guide-credit-line1 { font-size: 13px; color: var(--green-900); }
+  .guide-credit-line1 strong { color: var(--green-700); }
+  .guide-credit-line2 { font-size: 12px; color: var(--muted); margin-top: 4px; letter-spacing: .3px; }
   .guide-footer { background: linear-gradient(135deg, var(--gold), #b58f1c); color: #1a1a1a; border-radius: 12px; padding: 16px 20px; font-weight: 700; text-align: center; font-size: 14px; margin-bottom: 20px; }
   @media (max-width: 720px) {
     .guide-compare { grid-template-columns: 1fr; }
@@ -321,7 +325,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v10.5-fonts';
+const APP_VERSION = 'v10.6-credit';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -593,6 +597,11 @@ function guideHTML() {
 
     <div class="guide-footer">
       Before submitting, please review your documents carefully to avoid rejection and unnecessary delays.
+    </div>
+
+    <div class="guide-credit">
+      <div class="guide-credit-line1">Designed and Developed Exclusively for <strong>Puregold Price Club, Inc.</strong></div>
+      <div class="guide-credit-line2">© 2026 Carl_M@17 • All Rights Reserved</div>
     </div>`;
 }
 
