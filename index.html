@@ -135,6 +135,73 @@
   .remark-actions { display: flex; gap: 4px; margin-top: 6px; }
   .remark-actions button { padding: 3px 8px; font-size: 11px; }
   .staff-remark { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 12px; color: #78350f; white-space: pre-wrap; }
+  /* Announcements and messages */
+  .ann-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .post-list { display: flex; flex-direction: column; gap: 10px; }
+  .post-card { background: var(--card); border-radius: 0 12px 12px 0; border-left: 5px solid var(--green-700); padding: 14px 16px; box-shadow: 0 2px 8px rgba(6,78,59,0.06); cursor: pointer; transition: box-shadow .15s; }
+  .post-card:hover { box-shadow: 0 4px 16px rgba(6,78,59,0.14); }
+  .post-card.unread { background: #fffdf5; }
+  .post-card.unread .post-title { font-weight: 800; }
+  .post-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .post-type { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: .3px; }
+  .post-date { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .unread-dot { background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .post-title { font-size: 15px; font-weight: 700; color: var(--green-900); margin-top: 8px; word-break: break-word; }
+  .post-snippet { font-size: 13px; color: #4b5563; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+  .post-meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .ack-pill { background: #f0fdf4; color: #065f46; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .post-full { background: var(--card); border-radius: 12px; border-top: 5px solid var(--green-700); padding: 18px 20px; box-shadow: 0 2px 12px rgba(6,78,59,0.08); margin-bottom: 14px; }
+  .post-full-title { font-size: 20px; color: var(--green-900); margin: 10px 0 4px; word-break: break-word; }
+  .post-author { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .post-body { font-size: 14.5px; color: #1f2937; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+  .post-admin-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .ack-btn { margin-top: 14px; padding: 10px 22px; font-size: 15px; }
+  .ack-done { margin-top: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #065f46; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+  .ack-panel { background: var(--card); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); }
+  .ack-head { font-size: 14px; color: var(--green-900); margin-bottom: 10px; }
+  .ack-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ack-cols > div { display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; }
+  .ack-label { width: 100%; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .store-chip.waiting { background: #fef3c7; border-color: #f59e0b; color: #78350f; }
+  .ack-none { font-size: 12px; color: var(--muted); }
+  .thread { background: var(--card); border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); }
+  .thread-head { font-size: 15px; color: var(--green-900); margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+  .thread-head span { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .reply { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: #fff; }
+  .reply.signer { background: #f0fdf4; border-color: #bbf7d0; }
+  .reply.mine { border-color: var(--green-500); }
+  .reply-head { display: flex; gap: 10px; align-items: center; }
+  .reply-avatar { width: 32px; height: 32px; border-radius: 16px; background: var(--green-700); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .reply.signer .reply-avatar { background: var(--gold); color: #1a1a1a; }
+  .reply-name { font-size: 13px; font-weight: 700; color: var(--green-900); }
+  .signer-tag { background: var(--gold); color: #1a1a1a; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+  .reply-sub { font-size: 11px; color: var(--muted); }
+  .reply-body { font-size: 14px; color: #1f2937; margin-top: 8px; white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+  .reply-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .reply-actions button { padding: 3px 10px; font-size: 11px; }
+  .reply-composer { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 6px; }
+  .reply-composer-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .att-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .att-picker button { padding: 6px 12px; font-size: 12px; }
+  .att-picked { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .att-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .att-thumb { padding: 0; width: 96px; height: 96px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--border); }
+  .att-thumb:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); background: #f1f5f9; }
+  .att-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .att-file { background: #f1f5f9; color: var(--green-900); border: 1px solid var(--border); padding: 6px 12px; font-size: 12px; }
+  .att-file:hover { background: var(--green-50); }
+  .post-type-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .ptype { display: inline-flex; gap: 6px; align-items: center; margin: 0; padding: 6px 12px; border-radius: 16px; border: 2px solid var(--border); font-size: 13px; cursor: pointer; background: #fff; color: var(--text); }
+  .ptype input { display: none; }
+  .ptype.active { border-color: var(--pc); background: var(--pb); color: var(--pc); font-weight: 700; }
+  .aud-picker { display: flex; flex-direction: column; gap: 6px; }
+  .aud-picker label { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 0; }
+  .aud-picker input { width: auto; }
+  .popover.wide { width: 560px; max-height: 86vh; top: 50%; bottom: auto; transform: translate(-50%, -50%); }
+  @media (max-width: 720px) {
+    .ack-cols { grid-template-columns: 1fr; }
+    .post-date { margin-left: 0; width: 100%; }
+  }
   /* To-do and notes */
   .privacy-note { display: flex; gap: 10px; align-items: flex-start; background: var(--green-50); border: 1px solid var(--green-100); border-left: 4px solid var(--green-700); border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: var(--green-900); line-height: 1.5; }
   .privacy-note strong { color: var(--green-700); }
@@ -177,7 +244,8 @@
   .note-colors { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
   .note-swatch { width: 30px; height: 30px; border-radius: 15px; border: 2px solid #d1d5db; cursor: pointer; }
   .note-swatch.active { border-color: var(--green-700); box-shadow: 0 0 0 3px var(--green-100); }
-  .todo-reminder { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2500; background: var(--green-900); color: #fff; border: 1px solid var(--gold); border-radius: 12px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); max-width: 92vw; font-size: 14px; animation: toastIn .25s ease; }
+  .reminder-stack { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2500; display: flex; flex-direction: column; gap: 8px; align-items: center; width: max-content; max-width: 92vw; }
+  .todo-reminder { background: var(--green-900); color: #fff; border: 1px solid var(--gold); border-radius: 12px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); max-width: 92vw; font-size: 14px; animation: toastIn .25s ease; }
   .todo-reminder button { background: var(--gold); color: #1a1a1a; padding: 6px 14px; font-size: 13px; flex-shrink: 0; }
   .todo-reminder .close-x { background: transparent; color: #fff; padding: 0 6px; font-size: 20px; }
   @media (max-width: 720px) {
@@ -374,7 +442,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v11.4-sharp';
+const APP_VERSION = 'v12-announcements';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -460,7 +528,7 @@ async function route() {
   currentUser = { id: session.user.id, email: session.user.email, ...profile };
   // Load every store this user is allowed to upload for
   currentUser.stores = await loadMyStores(session.user.id, profile);
-  if (profile.role === 'admin') renderAdmin(); else { renderStaff(); showTodoReminder(); }
+  if (profile.role === 'admin') renderAdmin(); else { renderStaff(); showTodoReminder(); showMessageReminder(); }
 }
 
 async function loadMyStores(userId, profile) {
@@ -554,10 +622,583 @@ async function handleAuth(e) {
 }
 
 // ---------- STAFF ----------
+// ---------- ANNOUNCEMENTS (admin) / MESSAGES (staff) ----------
+let annOpenPostId = null;
+let msgOpenPostId = null;
+const ATTACH_BUCKET = 'pgds-attachments';
+const MAX_ATTACH_MB = 5;
+const POST_TYPES = {
+  message:  { label: 'Message',  icon: '💬', color: '#1d4ed8', bg: '#dbeafe' },
+  reminder: { label: 'Reminder', icon: '⏰', color: '#b45309', bg: '#fef3c7' },
+  fyi:      { label: 'FYI',      icon: 'ℹ️', color: '#0d5c2f', bg: '#d1fadf' },
+  urgent:   { label: 'Urgent',   icon: '🚨', color: '#b91c1c', bg: '#fee2e2' },
+};
+
+function postTypeBadge(type) {
+  const t = POST_TYPES[type] || POST_TYPES.message;
+  return `<span class="post-type" style="background:${t.bg};color:${t.color};">${t.icon} ${t.label}</span>`;
+}
+function fmtDateTime(s) {
+  return new Date(s).toLocaleString([], { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+function dueChipHTML(d) {
+  const today = localToday();
+  const cls = d < today ? 'due-over' : d === today ? 'due-today' : 'due-later';
+  return `<span class="due-chip ${cls}">${d < today ? 'Overdue ' : d === today ? 'Due today ' : 'Due '}${fmtDue(d)}</span>`;
+}
+function myAuthorLabel() {
+  if (currentUser.role === 'admin') return 'Signer';
+  const st = currentUser.stores || [];
+  if (st.length === 1) return `Store ${st[0].store_number} - ${st[0].store_name}`;
+  if (st.length > 1) return `Stores ${st.map(s => s.store_number).join(', ')}`;
+  return currentUser.store_number ? `Store ${currentUser.store_number}` : 'Staff';
+}
+
+// ---- Attachments ----
+async function uploadAttachments(fileList) {
+  const out = [];
+  for (const f of Array.from(fileList || [])) {
+    if (f.size > MAX_ATTACH_MB * 1048576) { toast(`${f.name} is over ${MAX_ATTACH_MB}MB and was skipped.`, 'warn'); continue; }
+    const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+    const isImg = /^image\//i.test(f.type);
+    if (!isImg && !isPdf) { toast(`${f.name}: only photos and PDFs can be attached.`, 'warn'); continue; }
+    let body = f, type = isPdf ? 'application/pdf' : f.type, name = f.name;
+    if (isImg) {
+      try {
+        const c = await compressImage(f, 2400, 0.88);
+        body = new Blob([c.bytes], { type: 'image/jpeg' }); type = 'image/jpeg';
+        name = name.replace(/\.[^.]+$/, '') + '.jpg';
+      } catch (e) { /* keep original */ }
+    }
+    const safe = name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-60);
+    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+    const { error } = await sb.storage.from(ATTACH_BUCKET).upload(path, body, { contentType: type });
+    if (error) { toast(`Could not attach ${f.name}: ${error.message}`, 'error'); continue; }
+    out.push({ path, name, type, size: body.size });
+  }
+  return out;
+}
+
+function attachPickerHTML(id) {
+  return `<div class="att-picker">
+    <input type="file" id="${id}" accept="image/*,application/pdf" multiple style="display:none" onchange="renderPickedFiles('${id}')">
+    <button type="button" class="secondary" onclick="document.getElementById('${id}').click()">📎 Attach photo / PDF</button>
+    <span id="${id}-list" class="att-picked"></span>
+  </div>`;
+}
+function renderPickedFiles(id) {
+  const inp = document.getElementById(id), out = document.getElementById(id + '-list');
+  const files = Array.from((inp && inp.files) || []);
+  if (out) out.textContent = files.length ? files.map(f => f.name).join(', ') : '';
+}
+
+// Paths are generated by uploadAttachments and only contain [A-Za-z0-9._/-], so they are safe in onclick
+function attachmentsHTML(list) {
+  if (!list || !list.length) return '';
+  return `<div class="att-list">${list.map(a => {
+    if ((a.type || '').startsWith('image/')) {
+      return `<button type="button" class="att-thumb" onclick="event.stopPropagation();openInAppViewer('${ATTACH_BUCKET}','${a.path}')" title="${h(a.name)}"><img data-att-path="${a.path}" alt="${h(a.name)}"></button>`;
+    }
+    return `<button type="button" class="att-file" onclick="event.stopPropagation();openInAppViewer('${ATTACH_BUCKET}','${a.path}')">📄 ${h(a.name)}</button>`;
+  }).join('')}</div>`;
+}
+async function hydrateAttachmentThumbs(root) {
+  const imgs = Array.from((root || document).querySelectorAll('img[data-att-path]:not([src])'));
+  if (!imgs.length) return;
+  const paths = [...new Set(imgs.map(i => i.dataset.attPath))];
+  const { data } = await sb.storage.from(ATTACH_BUCKET).createSignedUrls(paths, 3600);
+  const map = {};
+  (data || []).forEach(d => { if (d.signedUrl) map[d.path] = d.signedUrl; });
+  imgs.forEach(i => { if (map[i.dataset.attPath]) i.src = map[i.dataset.attPath]; });
+}
+function removeAttachmentFiles(list) {
+  const paths = (list || []).map(a => a.path).filter(Boolean);
+  if (paths.length) sb.storage.from(ATTACH_BUCKET).remove(paths).catch(() => {});
+}
+
+// ---- Audience ----
+async function loadAudienceData() {
+  const [{ data: staff }, { data: userStores }, { data: stores }] = await Promise.all([
+    sb.from('pgds_profiles').select('id, full_name, email').eq('role', 'staff').eq('status', 'approved').order('full_name', { ascending: true }),
+    sb.from('pgds_user_stores').select('user_id, store_id'),
+    sb.from('pgds_stores').select('id, store_number, store_name, active').order('store_number', { ascending: true })
+  ]);
+  return { staff: staff || [], userStores: userStores || [], stores: stores || [] };
+}
+function recipientsFor(post, targets, aud) {
+  const staffIds = new Set(aud.staff.map(s => s.id));
+  if (post.audience_type === 'all') return staffIds;
+  const mine = targets.filter(t => t.post_id === post.id);
+  const set = new Set();
+  if (post.audience_type === 'users') mine.forEach(t => { if (t.user_id && staffIds.has(t.user_id)) set.add(t.user_id); });
+  if (post.audience_type === 'stores') {
+    const storeIds = new Set(mine.map(t => t.store_id).filter(Boolean));
+    aud.userStores.forEach(r => { if (storeIds.has(r.store_id) && staffIds.has(r.user_id)) set.add(r.user_id); });
+  }
+  return set;
+}
+
+// ---- Shared card ----
+function postCardHTML(p, o) {
+  const t = POST_TYPES[p.type] || POST_TYPES.message;
+  const atts = (p.attachments || []).length;
+  const body = p.body || '';
+  return `<div class="post-card ${o.unread ? 'unread' : ''}" style="border-left-color:${t.color};" onclick="${o.onclick}">
+    <div class="post-card-top">
+      ${postTypeBadge(p.type)}
+      ${p.pinned ? '<span title="Pinned">📌</span>' : ''}
+      ${o.unread ? '<span class="unread-dot">New</span>' : ''}
+      <span class="post-date">${fmtDateTime(p.created_at)}</span>
+    </div>
+    <div class="post-title">${h(p.title)}</div>
+    <div class="post-snippet">${h(body.slice(0, 180))}${body.length > 180 ? '…' : ''}</div>
+    <div class="post-meta">
+      ${p.due_date ? dueChipHTML(p.due_date) : ''}
+      ${o.meta ? `<span>${o.meta}</span>` : ''}
+      <span>💬 ${o.replies} ${o.replies === 1 ? 'reply' : 'replies'}</span>
+      ${atts ? `<span>📎 ${atts}</span>` : ''}
+      ${o.ack ? `<span class="ack-pill">✅ ${o.ack}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+// ---- Admin: list ----
+async function renderAnnouncements(el) {
+  el.innerHTML = '<p class="empty">Loading announcements...</p>';
+  const { data: posts, error } = await sb.from('pgds_posts').select('*')
+    .order('pinned', { ascending: false }).order('created_at', { ascending: false });
+  if (error) return el.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  const list = posts || [];
+  const ids = list.map(p => p.id);
+  const none = { data: [] };
+  const [aud, tg, rp, rd] = await Promise.all([
+    loadAudienceData(),
+    ids.length ? sb.from('pgds_post_targets').select('*').in('post_id', ids) : none,
+    ids.length ? sb.from('pgds_post_replies').select('post_id').in('post_id', ids) : none,
+    ids.length ? sb.from('pgds_post_reads').select('post_id, user_id, acked_at').in('post_id', ids) : none
+  ]);
+  const targets = tg.data || [];
+  const replyCount = {};
+  (rp.data || []).forEach(r => { replyCount[r.post_id] = (replyCount[r.post_id] || 0) + 1; });
+  const storeById = {}; aud.stores.forEach(s => { storeById[s.id] = s; });
+  const staffById = {}; aud.staff.forEach(s => { staffById[s.id] = s; });
+  el.innerHTML = `
+    <div class="ann-toolbar">
+      <div>
+        <h3 style="margin:0;color:var(--green-900);">📢 Announcements</h3>
+        <p style="margin:2px 0 0;font-size:12px;color:var(--muted);">Send messages, reminders, and FYIs to staff. Replies are visible to everyone who received the post.</p>
+      </div>
+      <button onclick="openComposePost()">➕ New announcement</button>
+    </div>
+    ${list.length ? `<div class="post-list">${list.map(p => {
+      const rec = recipientsFor(p, targets, aud);
+      const acked = (rd.data || []).filter(r => r.post_id === p.id && r.acked_at && rec.has(r.user_id)).length;
+      const mine = targets.filter(t => t.post_id === p.id);
+      const audLabel = p.audience_type === 'all' ? 'All staff'
+        : p.audience_type === 'stores' ? 'Stores ' + mine.map(t => storeById[t.store_id] ? storeById[t.store_id].store_number : '?').join(', ')
+        : mine.map(t => staffById[t.user_id] ? (staffById[t.user_id].full_name || staffById[t.user_id].email) : 'former staff').join(', ');
+      return postCardHTML(p, {
+        meta: `👥 ${h(audLabel)}`,
+        replies: replyCount[p.id] || 0,
+        ack: p.require_ack ? `${acked} of ${rec.size} got it` : '',
+        onclick: `openPostAdmin('${p.id}')`
+      });
+    }).join('')}</div>` : '<p class="empty">No announcements yet. Tap New announcement to send your first one.</p>'}`;
+}
+function openPostAdmin(id) { annOpenPostId = id; renderAdminView(); }
+
+// ---- Admin: compose / edit ----
+async function openComposePost(editId) {
+  closePopover();
+  const aud = await loadAudienceData();
+  let post = null;
+  if (editId) {
+    const { data } = await sb.from('pgds_posts').select('*').eq('id', editId).single();
+    post = data;
+  }
+  const type = post ? post.type : 'message';
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover wide';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>${post ? 'Edit announcement' : 'New announcement'}</h4>
+    <div class="post-type-picker" id="postTypePicker">
+      ${Object.entries(POST_TYPES).map(([k, t]) => `<label class="ptype ${k === type ? 'active' : ''}" style="--pc:${t.color};--pb:${t.bg};"><input type="radio" name="postType" value="${k}" ${k === type ? 'checked' : ''} onchange="onPostTypeChange()">${t.icon} ${t.label}</label>`).join('')}
+    </div>
+    <div class="form-group"><label>Title *</label><input type="text" id="postTitle" maxlength="140" value="${h(post ? post.title : '')}" placeholder="e.g. Submit September RFPs by Friday"></div>
+    <div class="form-group"><label>Message *</label><textarea id="postBody" style="min-height:120px;" placeholder="Write the details staff need to know.">${h(post ? post.body : '')}</textarea></div>
+    <div class="row2">
+      <div class="form-group"><label>Due date (optional)</label><input type="date" id="postDue" value="${h((post && post.due_date) || '')}"></div>
+      <div class="form-group" style="display:flex;flex-direction:column;gap:8px;justify-content:flex-end;">
+        <label style="display:flex;gap:8px;align-items:center;margin:0;"><input type="checkbox" id="postPinned" style="width:auto;" ${post && post.pinned ? 'checked' : ''}> Pin to top</label>
+        <label style="display:flex;gap:8px;align-items:center;margin:0;"><input type="checkbox" id="postAck" style="width:auto;" ${post ? 'data-touched="1"' : ''} ${post && post.require_ack ? 'checked' : ''} onchange="this.dataset.touched='1'"> Ask staff to tap "Got it"</label>
+      </div>
+    </div>
+    ${post ? '<p style="font-size:12px;color:var(--muted);">Recipients and attachments cannot be changed after sending.</p>' : `
+    <div class="form-group">
+      <label>Send to *</label>
+      <div class="aud-picker">
+        <label><input type="radio" name="postAud" value="all" checked onchange="onAudChange()"> All staff (${aud.staff.length})</label>
+        <label><input type="radio" name="postAud" value="stores" onchange="onAudChange()"> Specific stores</label>
+        <label><input type="radio" name="postAud" value="users" onchange="onAudChange()"> Specific people</label>
+      </div>
+      <div id="audStores" class="store-picker" style="display:none;margin-top:8px;">
+        ${aud.stores.filter(s => s.active !== false).map(s => `<label class="store-opt"><input type="checkbox" value="${s.id}"><span>${h(s.store_number)} - ${h(s.store_name)}</span></label>`).join('') || '<p style="font-size:13px;color:var(--muted);">No stores yet.</p>'}
+      </div>
+      <div id="audUsers" class="store-picker" style="display:none;margin-top:8px;">
+        ${aud.staff.map(s => `<label class="store-opt"><input type="checkbox" value="${s.id}"><span>${h(s.full_name || s.email)}</span></label>`).join('') || '<p style="font-size:13px;color:var(--muted);">No approved staff yet.</p>'}
+      </div>
+    </div>
+    <div class="form-group"><label>Attachments</label>${attachPickerHTML('postFiles')}</div>`}
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button id="postSendBtn" onclick="submitPost(${post ? `'${post.id}'` : 'null'})">${post ? '💾 Save changes' : '📨 Send'}</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+  if (!post) onPostTypeChange();
+}
+
+function onPostTypeChange() {
+  const v = (document.querySelector('input[name=postType]:checked') || {}).value;
+  document.querySelectorAll('#postTypePicker .ptype').forEach(l => l.classList.toggle('active', l.querySelector('input').value === v));
+  const ack = document.getElementById('postAck');
+  if (ack && !ack.dataset.touched) ack.checked = (v === 'reminder' || v === 'urgent');
+}
+function onAudChange() {
+  const v = (document.querySelector('input[name=postAud]:checked') || {}).value;
+  const s = document.getElementById('audStores'), u = document.getElementById('audUsers');
+  if (s) s.style.display = v === 'stores' ? 'block' : 'none';
+  if (u) u.style.display = v === 'users' ? 'block' : 'none';
+}
+
+async function submitPost(editId) {
+  const type = (document.querySelector('input[name=postType]:checked') || {}).value || 'message';
+  const title = document.getElementById('postTitle').value.trim();
+  const body = document.getElementById('postBody').value.trim();
+  if (!title) return toast('Add a title.', 'warn');
+  if (!body) return toast('Write a message.', 'warn');
+  const fields = {
+    type, title, body,
+    due_date: document.getElementById('postDue').value || null,
+    pinned: document.getElementById('postPinned').checked,
+    require_ack: document.getElementById('postAck').checked,
+    updated_at: new Date().toISOString()
+  };
+  const btn = document.getElementById('postSendBtn'); btn.disabled = true;
+  try {
+    if (editId) {
+      const { error } = await sb.from('pgds_posts').update(fields).eq('id', editId);
+      if (error) throw error;
+      closePopover(); toast('✓ Announcement updated'); renderAdminView();
+      return;
+    }
+    const audType = document.querySelector('input[name=postAud]:checked').value;
+    const picked = audType === 'stores' ? Array.from(document.querySelectorAll('#audStores input:checked')).map(i => i.value)
+      : audType === 'users' ? Array.from(document.querySelectorAll('#audUsers input:checked')).map(i => i.value) : [];
+    if (audType !== 'all' && !picked.length) {
+      btn.disabled = false;
+      return toast(audType === 'stores' ? 'Tick at least one store.' : 'Tick at least one person.', 'warn');
+    }
+    btn.textContent = 'Sending...';
+    const attachments = await uploadAttachments(document.getElementById('postFiles').files);
+    const { data: post, error } = await sb.from('pgds_posts').insert({
+      ...fields, audience_type: audType, attachments, author_id: currentUser.id, author_name: niceName()
+    }).select().single();
+    if (error) { removeAttachmentFiles(attachments); throw error; }
+    if (picked.length) {
+      const rows = picked.map(id => audType === 'stores' ? { post_id: post.id, store_id: id } : { post_id: post.id, user_id: id });
+      const { error: tErr } = await sb.from('pgds_post_targets').insert(rows);
+      if (tErr) { await sb.from('pgds_posts').delete().eq('id', post.id); removeAttachmentFiles(attachments); throw tErr; }
+    }
+    closePopover(); toast('📨 Announcement sent'); renderAdminView();
+  } catch (err) {
+    toast(err.message || String(err), 'error');
+    const b = document.getElementById('postSendBtn');
+    if (b) { b.disabled = false; b.textContent = editId ? '💾 Save changes' : '📨 Send'; }
+  }
+}
+
+async function deletePost(id) {
+  if (!confirm('Delete this announcement and all its replies? This cannot be undone.')) return;
+  const [{ data: p }, { data: reps }] = await Promise.all([
+    sb.from('pgds_posts').select('attachments').eq('id', id).single(),
+    sb.from('pgds_post_replies').select('attachments').eq('post_id', id)
+  ]);
+  const { data: deleted, error } = await sb.from('pgds_posts').delete().eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!deleted || !deleted.length) return toast('Nothing was deleted - permission denied.', 'error');
+  removeAttachmentFiles([...((p && p.attachments) || []), ...(reps || []).flatMap(r => r.attachments || [])]);
+  toast('Announcement deleted');
+  annOpenPostId = null;
+  renderAdminView();
+}
+
+// ---- Shared: thread view ----
+function threadContainer() {
+  return currentUser.role === 'admin' ? document.getElementById('content') : document.getElementById('staffPane');
+}
+function closePostThread() {
+  if (currentUser.role === 'admin') { annOpenPostId = null; renderAdminView(); }
+  else { msgOpenPostId = null; renderMessagesPane(); }
+}
+async function rerenderThread(postId, scrollToEnd) {
+  const el = threadContainer(); if (!el) return;
+  await renderPostThread(el, postId);
+  if (scrollToEnd) { const c = document.querySelector('.reply-composer'); if (c) c.scrollIntoView({ block: 'end', behavior: 'smooth' }); }
+}
+
+async function renderPostThread(el, postId) {
+  const isAdmin = currentUser.role === 'admin';
+  el.innerHTML = '<p class="empty">Loading...</p>';
+  const { data: p, error } = await sb.from('pgds_posts').select('*').eq('id', postId).maybeSingle();
+  if (error || !p) {
+    el.innerHTML = `<button class="secondary" onclick="closePostThread()" style="margin-bottom:12px;">← Back</button><div class="msg error">This post is no longer available.</div>`;
+    return;
+  }
+  const [{ data: replies }, { data: myRead }] = await Promise.all([
+    sb.from('pgds_post_replies').select('*').eq('post_id', postId).order('created_at', { ascending: true }),
+    sb.from('pgds_post_reads').select('*').eq('post_id', postId).eq('user_id', currentUser.id).maybeSingle()
+  ]);
+  let read = myRead;
+  if (!isAdmin && !read) {
+    const now = new Date().toISOString();
+    await sb.from('pgds_post_reads').upsert({ post_id: postId, user_id: currentUser.id, read_at: now }, { onConflict: 'post_id,user_id' });
+    read = { read_at: now, acked_at: null };
+    updateMsgUnread();
+  }
+
+  let ackBlock = '';
+  if (!isAdmin && p.require_ack) {
+    ackBlock = read && read.acked_at
+      ? `<div class="ack-done">✅ You confirmed "Got it" on ${fmtDateTime(read.acked_at)}</div>`
+      : `<button class="gold ack-btn" onclick="ackPost('${p.id}')">👍 Got it</button>`;
+  }
+
+  let ackPanel = '';
+  if (isAdmin && p.require_ack) {
+    const [aud, { data: tg }, { data: reads }] = await Promise.all([
+      loadAudienceData(),
+      sb.from('pgds_post_targets').select('*').eq('post_id', postId),
+      sb.from('pgds_post_reads').select('*').eq('post_id', postId)
+    ]);
+    const rec = [...recipientsFor(p, tg || [], aud)];
+    const staffById = {}; aud.staff.forEach(s => { staffById[s.id] = s; });
+    const ackedIds = new Set((reads || []).filter(r => r.acked_at).map(r => r.user_id));
+    const done = rec.filter(id => ackedIds.has(id)), waiting = rec.filter(id => !ackedIds.has(id));
+    const nm = id => h(staffById[id] ? (staffById[id].full_name || staffById[id].email) : 'Unknown');
+    ackPanel = `<div class="ack-panel">
+      <div class="ack-head">✅ Got it: <strong>${done.length} of ${rec.length}</strong></div>
+      <div class="ack-cols">
+        <div><div class="ack-label">Confirmed</div>${done.map(id => `<span class="store-chip">${nm(id)}</span>`).join('') || '<span class="ack-none">No one yet</span>'}</div>
+        <div><div class="ack-label">Waiting</div>${waiting.map(id => `<span class="store-chip waiting">${nm(id)}</span>`).join('') || '<span class="ack-none">Everyone confirmed</span>'}</div>
+      </div>
+    </div>`;
+  }
+
+  const t = POST_TYPES[p.type] || POST_TYPES.message;
+  const reps = replies || [];
+  window.__threadReplies = reps;
+  el.innerHTML = `
+    <button class="secondary" onclick="closePostThread()" style="margin-bottom:12px;">← Back to ${isAdmin ? 'announcements' : 'messages'}</button>
+    <div class="post-full" style="border-top-color:${t.color};">
+      <div class="post-card-top">${postTypeBadge(p.type)}${p.pinned ? '<span>📌 Pinned</span>' : ''}<span class="post-date">${fmtDateTime(p.created_at)}</span></div>
+      <h2 class="post-full-title">${h(p.title)}</h2>
+      <div class="post-author">From ${h(p.author_name || 'Signer')}${p.due_date ? ' · ' + dueChipHTML(p.due_date) : ''}</div>
+      <div class="post-body">${h(p.body)}</div>
+      ${attachmentsHTML(p.attachments)}
+      ${ackBlock}
+      ${isAdmin ? `<div class="post-admin-actions">
+        <button class="secondary" onclick="openComposePost('${p.id}')">✏️ Edit</button>
+        <button class="danger" onclick="deletePost('${p.id}')">🗑 Delete</button>
+      </div>` : ''}
+    </div>
+    ${ackPanel}
+    <div class="thread">
+      <h3 class="thread-head">💬 Replies (${reps.length}) <span>Visible to everyone who received this post</span></h3>
+      ${reps.map(r => replyHTML(r, isAdmin)).join('') || '<p class="empty" style="padding:16px;">No replies yet. Start the conversation.</p>'}
+      <div class="reply-composer">
+        <textarea id="replyBody" placeholder="Write a reply..." style="min-height:70px;"></textarea>
+        <div class="reply-composer-actions">
+          ${attachPickerHTML('replyFiles')}
+          <button id="replySendBtn" onclick="sendReply('${p.id}')">Send reply</button>
+        </div>
+      </div>
+    </div>`;
+  hydrateAttachmentThumbs(el);
+}
+
+function replyHTML(r, isAdmin) {
+  const mine = r.author_id === currentUser.id;
+  const fromSigner = r.author_role === 'admin';
+  const edited = r.updated_at && r.created_at && new Date(r.updated_at) - new Date(r.created_at) > 1000;
+  return `<div class="reply ${mine ? 'mine' : ''} ${fromSigner ? 'signer' : ''}">
+    <div class="reply-head">
+      <span class="reply-avatar">${h((r.author_name || '?').trim().charAt(0).toUpperCase())}</span>
+      <div>
+        <div class="reply-name">${h(r.author_name || 'Staff')}${fromSigner ? '<span class="signer-tag">Signer</span>' : ''}</div>
+        <div class="reply-sub">${r.author_label && !fromSigner ? h(r.author_label) + ' · ' : ''}${fmtDateTime(r.created_at)}${edited ? ' · edited' : ''}</div>
+      </div>
+    </div>
+    ${r.body ? `<div class="reply-body">${h(r.body)}</div>` : ''}
+    ${attachmentsHTML(r.attachments)}
+    ${mine || isAdmin ? `<div class="reply-actions">
+      ${mine ? `<button class="secondary" onclick="editReply('${r.id}','${r.post_id}')">✏️ Edit</button>` : ''}
+      <button class="danger" onclick="deleteReply('${r.id}','${r.post_id}')">🗑 Delete</button>
+    </div>` : ''}
+  </div>`;
+}
+
+async function sendReply(postId) {
+  const body = document.getElementById('replyBody').value.trim();
+  const files = document.getElementById('replyFiles').files;
+  if (!body && !(files && files.length)) return toast('Write a reply or attach a file.', 'warn');
+  const btn = document.getElementById('replySendBtn'); btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const attachments = await uploadAttachments(files);
+    if (!body && !attachments.length) throw new Error('Nothing to send.');
+    const { error } = await sb.from('pgds_post_replies').insert({
+      post_id: postId, author_id: currentUser.id, author_name: niceName(),
+      author_label: myAuthorLabel(), author_role: currentUser.role, body, attachments
+    });
+    if (error) { removeAttachmentFiles(attachments); throw error; }
+    toast('✓ Reply sent');
+    rerenderThread(postId, true);
+  } catch (err) {
+    toast(err.message || String(err), 'error');
+    const b = document.getElementById('replySendBtn');
+    if (b) { b.disabled = false; b.textContent = 'Send reply'; }
+  }
+}
+
+function editReply(id, postId) {
+  closePopover();
+  const r = (window.__threadReplies || []).find(x => x.id === id);
+  if (!r) return;
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>Edit reply</h4>
+    <textarea id="editReplyBody" style="min-height:120px;">${h(r.body || '')}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="saveReplyEdit('${id}','${postId}')">💾 Save</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+}
+async function saveReplyEdit(id, postId) {
+  const body = document.getElementById('editReplyBody').value.trim();
+  const r = (window.__threadReplies || []).find(x => x.id === id);
+  if (!body && !(r && (r.attachments || []).length)) return toast('A reply needs text or an attachment.', 'warn');
+  const { error } = await sb.from('pgds_post_replies').update({ body, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) return toast(error.message, 'error');
+  closePopover(); toast('✓ Reply updated');
+  rerenderThread(postId);
+}
+async function deleteReply(id, postId) {
+  if (!confirm('Delete this reply?')) return;
+  const r = (window.__threadReplies || []).find(x => x.id === id);
+  const { data: deleted, error } = await sb.from('pgds_post_replies').delete().eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!deleted || !deleted.length) return toast('Could not delete - permission denied.', 'error');
+  removeAttachmentFiles(r && r.attachments);
+  toast('Reply deleted');
+  rerenderThread(postId);
+}
+async function ackPost(postId) {
+  const now = new Date().toISOString();
+  const { error } = await sb.from('pgds_post_reads').upsert(
+    { post_id: postId, user_id: currentUser.id, read_at: now, acked_at: now }, { onConflict: 'post_id,user_id' });
+  if (error) return toast(error.message, 'error');
+  toast('👍 Marked as Got it');
+  rerenderThread(postId);
+}
+
+// ---- Staff: messages list, unread badge, login banner ----
+async function renderMessagesPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  if (msgOpenPostId) return renderPostThread(pane, msgOpenPostId);
+  pane.innerHTML = '<p class="empty">Loading messages...</p>';
+  const { data: posts, error } = await sb.from('pgds_posts').select('*')
+    .order('pinned', { ascending: false }).order('created_at', { ascending: false });
+  if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  const list = posts || [];
+  const ids = list.map(p => p.id);
+  const none = { data: [] };
+  const [rd, rp] = await Promise.all([
+    ids.length ? sb.from('pgds_post_reads').select('post_id, acked_at').eq('user_id', currentUser.id).in('post_id', ids) : none,
+    ids.length ? sb.from('pgds_post_replies').select('post_id').in('post_id', ids) : none
+  ]);
+  const readSet = new Set((rd.data || []).map(r => r.post_id));
+  const ackSet = new Set((rd.data || []).filter(r => r.acked_at).map(r => r.post_id));
+  const replyCount = {};
+  (rp.data || []).forEach(r => { replyCount[r.post_id] = (replyCount[r.post_id] || 0) + 1; });
+  const unread = ids.filter(id => !readSet.has(id)).length;
+  pane.innerHTML = `
+    <div class="ann-toolbar">
+      <div>
+        <h3 style="margin:0;color:var(--green-900);">📢 Messages from the signer</h3>
+        <p style="margin:2px 0 0;font-size:12px;color:var(--muted);">${unread ? `${unread} unread` : 'All caught up'} · Replies are visible to everyone who received the post.</p>
+      </div>
+    </div>
+    ${list.length ? `<div class="post-list">${list.map(p => postCardHTML(p, {
+      unread: !readSet.has(p.id),
+      replies: replyCount[p.id] || 0,
+      ack: p.require_ack ? (ackSet.has(p.id) ? 'You confirmed' : 'Tap Got it to confirm') : '',
+      onclick: `openPostStaff('${p.id}')`
+    })).join('')}</div>` : '<p class="empty">No messages yet.</p>'}`;
+  setMsgUnreadBadge(unread);
+}
+function openPostStaff(id) { msgOpenPostId = id; renderMessagesPane(); }
+
+async function countUnreadMessages() {
+  const { data: posts } = await sb.from('pgds_posts').select('id, type');
+  const list = posts || [];
+  if (!list.length) return { unread: [], total: 0 };
+  const { data: reads } = await sb.from('pgds_post_reads').select('post_id').eq('user_id', currentUser.id).in('post_id', list.map(p => p.id));
+  const readSet = new Set((reads || []).map(r => r.post_id));
+  return { unread: list.filter(p => !readSet.has(p.id)), total: list.length };
+}
+async function updateMsgUnread() {
+  if (!currentUser || currentUser.role === 'admin') return;
+  const { unread } = await countUnreadMessages();
+  setMsgUnreadBadge(unread.length);
+}
+function setMsgUnreadBadge(n) {
+  const b = document.getElementById('msgUnread');
+  if (b) b.textContent = n ? `(${n})` : '';
+}
+
+function getReminderStack() {
+  let s = document.querySelector('.reminder-stack');
+  if (!s) { s = document.createElement('div'); s.className = 'reminder-stack'; document.body.appendChild(s); }
+  return s;
+}
+async function showMessageReminder() {
+  try {
+    if (sessionStorage.getItem('pgds_msg_reminded')) return;
+    sessionStorage.setItem('pgds_msg_reminded', '1');
+  } catch (e) {}
+  const { unread } = await countUnreadMessages();
+  if (!unread.length) return;
+  const urgent = unread.filter(p => p.type === 'urgent').length;
+  const el = document.createElement('div');
+  el.className = 'todo-reminder msg-reminder';
+  el.innerHTML = `<span>📢 You have ${unread.length} unread message${unread.length > 1 ? 's' : ''}${urgent ? ` (${urgent} urgent)` : ''}.</span>
+    <button onclick="openMessagesFromReminder(this)">View</button>
+    <button class="close-x" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>`;
+  getReminderStack().appendChild(el);
+}
+function openMessagesFromReminder(btn) {
+  btn.parentElement.remove();
+  staffView = 'messages'; msgOpenPostId = null;
+  renderStaff();
+}
+
 // ---------- STAFF TABS ----------
 function staffTabsHTML() {
   const t = (v, label) => `<div class="tab ${staffView === v ? 'active' : ''}" data-sv="${v}">${label}</div>`;
-  return `<div class="tabs">${t('docs', '📄 My Documents')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
+  return `<div class="tabs">${t('docs', '📄 My Documents')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
 }
 
 // ---------- TO-DO (private per staff) ----------
@@ -721,10 +1362,10 @@ async function showTodoReminder() {
   el.innerHTML = `<span>⏰ You have ${parts.join(' and ')}.</span>
     <button onclick="openTodoFromReminder()">View</button>
     <button class="close-x" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>`;
-  document.body.appendChild(el);
+  getReminderStack().appendChild(el);
 }
 function openTodoFromReminder() {
-  document.querySelectorAll('.todo-reminder').forEach(e => e.remove());
+  document.querySelectorAll('.todo-reminder:not(.msg-reminder)').forEach(e => e.remove());
   staffView = 'todo'; todoFilter = 'active';
   renderStaff();
 }
@@ -1074,16 +1715,17 @@ function toggleMenu(e) {
 }
 
 async function renderStaff() {
-  if (staffView === 'todo' || staffView === 'notes') {
+  setTimeout(updateMsgUnread, 0);
+  if (staffView === 'todo' || staffView === 'notes' || staffView === 'messages') {
     app.innerHTML = `
-      ${headerHTML(staffView === 'todo' ? 'To-Do' : 'Notes')}
+      ${headerHTML({ todo: 'To-Do', notes: 'Notes', messages: 'Messages' }[staffView])}
       <div class="container">
         ${staffTabsHTML()}
         <div id="staffPane"><p class="empty">Loading...</p></div>
       </div>`;
-    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
     centerActiveTabs();
-    if (staffView === 'todo') renderTodoPane(); else renderNotesPane();
+    if (staffView === 'todo') renderTodoPane(); else if (staffView === 'notes') renderNotesPane(); else renderMessagesPane();
     return;
   }
   if (staffView === 'guide') {
@@ -1093,7 +1735,7 @@ async function renderStaff() {
         ${staffTabsHTML()}
         ${guideHTML()}
       </div>`;
-    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
     centerActiveTabs();
     return;
   }
@@ -1152,7 +1794,7 @@ async function renderStaff() {
       </div>
       <div id="docList"></div>
     </div>`;
-  document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; renderStaff(); });
+  document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
     centerActiveTabs();
   document.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStaff(); });
   document.getElementById('fileInput').onchange = handleFilePick;
@@ -1498,6 +2140,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='pending-users'?'active':''}" data-v="pending-users">Pending Users <span id="pendingCount"></span></div>
         <div class="tab ${adminView==='users'?'active':''}" data-v="users">All Users</div>
         <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">📋 Signing Queue <span id="docsCount"></span></div>
+        <div class="tab ${adminView==='announcements'?'active':''}" data-v="announcements">📢 Announcements</div>
         <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved Docs</div>
         <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
         <div class="tab ${adminView==='store-requests'?'active':''}" data-v="store-requests">🏪 Store Requests <span id="storeReqCount"></span></div>
@@ -1508,7 +2151,7 @@ async function renderAdmin() {
       <div id="msg"></div>
       <div id="content"></div>
     </div>`;
-  document.querySelectorAll('.tab[data-v]').forEach(t => t.onclick = () => { adminView = t.dataset.v; renderAdmin(); });
+  document.querySelectorAll('.tab[data-v]').forEach(t => t.onclick = () => { adminView = t.dataset.v; annOpenPostId = null; renderAdmin(); });
   centerActiveTabs();
   renderAdminView();
   updateAdminCounts();
@@ -1534,6 +2177,7 @@ async function renderAdminView() {
   if (adminView === 'documents') return renderPendingQueue(el);
   if (adminView === 'approved-folders') return renderApprovedFolders(el);
   if (adminView === 'rejected') return renderRejected(el);
+  if (adminView === 'announcements') return annOpenPostId ? renderPostThread(el, annOpenPostId) : renderAnnouncements(el);
   if (adminView === 'store-requests') return renderStoreRequests(el);
   if (adminView === 'stores') return renderStores(el);
   if (adminView === 'signatures') return renderSignaturesMgr(el);
@@ -2962,9 +3606,9 @@ function closeSigningModal() {
 }
 
 async function logout() {
-  try { sessionStorage.removeItem('pgds_todo_reminded'); } catch (e) {}
-  document.querySelectorAll('.todo-reminder').forEach(e => e.remove());
-  await sb.auth.signOut(); currentUser = null; staffView = 'docs'; route();
+  try { sessionStorage.removeItem('pgds_todo_reminded'); sessionStorage.removeItem('pgds_msg_reminded'); } catch (e) {}
+  document.querySelectorAll('.reminder-stack, .todo-reminder').forEach(e => e.remove());
+  await sb.auth.signOut(); currentUser = null; staffView = 'docs'; msgOpenPostId = null; annOpenPostId = null; route();
 }
 function refreshApp() { window.location.reload(); }
 
