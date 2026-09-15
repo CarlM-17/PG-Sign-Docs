@@ -159,16 +159,21 @@
   .due-done { background: #f1f5f9; color: var(--muted); }
   .notes-toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
   .notes-toolbar input { flex: 1; }
-  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .note-card { border-radius: 12px; padding: 14px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 8px rgba(6,78,59,0.05); cursor: pointer; display: flex; flex-direction: column; min-height: 130px; }
-  .note-card:hover { box-shadow: 0 4px 14px rgba(6,78,59,0.14); }
-  .note-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .note-title { font-weight: 700; color: var(--green-900); font-size: 14px; word-break: break-word; }
-  .note-pin { background: transparent; border: none; padding: 0 2px; font-size: 16px; opacity: .35; filter: grayscale(1); flex-shrink: 0; }
-  .note-pin:hover { background: transparent; transform: none; box-shadow: none; opacity: .75; }
-  .note-pin.on { opacity: 1; filter: none; }
-  .note-body { font-size: 13px; color: #374151; margin-top: 6px; white-space: pre-wrap; word-break: break-word; flex: 1; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
-  .note-foot { font-size: 11px; color: var(--muted); margin-top: 10px; }
+  .notes-table td { vertical-align: top; }
+  .note-dt { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .note-group-row td { border-top: 1px solid rgba(0,0,0,0.06); }
+  .note-group-row:hover td { filter: brightness(0.98); }
+  .note-title-btn { background: transparent; color: var(--green-900); border: none; padding: 0; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; display: inline-flex; align-items: baseline; gap: 6px; word-break: break-word; }
+  .note-title-btn:hover { background: transparent; transform: none; box-shadow: none; text-decoration: underline; }
+  .note-caret { color: var(--green-700); width: 12px; display: inline-block; }
+  .note-count { color: #fff; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .note-preview { font-size: 13px; color: #374151; max-width: 1px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-entry-row td { background: #fff; }
+  .note-entry-row td:first-child { padding-left: 22px; }
+  .note-color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 8px; vertical-align: middle; }
+  .note-full { font-size: 13.5px; color: #1f2937; white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+  .note-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .note-actions button { padding: 4px 10px; font-size: 11px; }
   .note-colors { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
   .note-swatch { width: 30px; height: 30px; border-radius: 15px; border: 2px solid #d1d5db; cursor: pointer; }
   .note-swatch.active { border-color: var(--green-700); box-shadow: 0 0 0 3px var(--green-100); }
@@ -178,7 +183,6 @@
   @media (max-width: 720px) {
     .todo-form { grid-template-columns: 1fr 1fr; }
     .todo-form #todoTitle, .todo-form button { grid-column: 1 / -1; }
-    .notes-grid { grid-template-columns: 1fr 1fr; }
   }
   /* Guide */
   .guide-hero { background: linear-gradient(135deg, var(--green-900), var(--green-700)); border-radius: 14px; padding: 22px; display: flex; gap: 18px; align-items: center; margin-bottom: 20px; border-bottom: 4px solid var(--gold); box-shadow: 0 4px 16px rgba(6,78,59,0.2); }
@@ -370,7 +374,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v11.1-privacy-note';
+const APP_VERSION = 'v11.3-notes-table';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -746,29 +750,91 @@ async function renderNotesPane() {
       <input type="text" id="notesSearch" placeholder="Search notes" value="${h(notesSearch)}">
       <button onclick="openNoteEditor()">➕ New note</button>
     </div>
-    <div id="notesGrid" class="notes-grid"></div>`;
+    <div id="notesGrid"></div>`;
   const s = document.getElementById('notesSearch');
   s.oninput = () => { notesSearch = s.value; drawNotesGrid(); };
   drawNotesGrid();
 }
 
+// Stronger accent per note color, used for the color-coded left border
+const NOTE_ACCENTS = { white: '#94a3b8', yellow: '#f59e0b', green: '#10b981', blue: '#3b82f6', pink: '#ec4899', purple: '#8b5cf6' };
+const notesExpanded = new Set();
+
+function noteDateTime(n) {
+  return new Date(n.updated_at || n.created_at).toLocaleString([], {
+    month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+}
+
+// Table grouped by title: tap a title to expand every note saved under it
 function drawNotesGrid() {
   const grid = document.getElementById('notesGrid'); if (!grid) return;
   const q = notesSearch.trim().toLowerCase();
   const list = (window.__pgdsNotes || []).filter(n => !q || (n.title || '').toLowerCase().includes(q) || (n.body || '').toLowerCase().includes(q));
   if (!list.length) {
-    grid.innerHTML = `<p class="empty" style="grid-column:1/-1;">${q ? 'No notes match your search.' : 'No notes yet. Tap New note to start.'}</p>`;
+    grid.innerHTML = `<p class="empty">${q ? 'No notes match your search.' : 'No notes yet. Tap New note to start.'}</p>`;
     return;
   }
-  grid.innerHTML = list.map(n => `
-    <div class="note-card" style="background:${NOTE_COLORS[n.color] || NOTE_COLORS.white}" onclick="openNoteEditor('${n.id}')">
-      <div class="note-head">
-        <span class="note-title">${h(n.title || 'Untitled')}</span>
-        <button class="note-pin ${n.pinned ? 'on' : ''}" title="${n.pinned ? 'Unpin' : 'Pin to top'}" onclick="event.stopPropagation();togglePinNote('${n.id}', ${!n.pinned})">📌</button>
-      </div>
-      <div class="note-body">${h(n.body || '')}</div>
-      <div class="note-foot">${n.pinned ? 'Pinned · ' : ''}${new Date(n.updated_at || n.created_at).toLocaleDateString()}</div>
-    </div>`).join('');
+  const map = new Map();
+  list.forEach(n => {
+    const key = (n.title || 'Untitled').trim().toLowerCase() || 'untitled';
+    if (!map.has(key)) map.set(key, { key, title: (n.title || 'Untitled').trim() || 'Untitled', notes: [] });
+    map.get(key).notes.push(n);
+  });
+  const groups = [...map.values()];
+  groups.forEach(g => sortNotes(g.notes));
+  groups.sort((a, b) =>
+    (b.notes.some(n => n.pinned) - a.notes.some(n => n.pinned)) ||
+    new Date(b.notes[0].updated_at || b.notes[0].created_at) - new Date(a.notes[0].updated_at || a.notes[0].created_at));
+  window.__noteGroups = groups;
+  // While searching, open every matching group so results are visible
+  const isOpen = g => q ? true : notesExpanded.has(g.key);
+
+  grid.innerHTML = `<table class="notes-table">
+    <thead><tr><th style="width:170px;">Date &amp; time</th><th style="width:30%;">Title</th><th>Note</th></tr></thead>
+    <tbody>
+      ${groups.map((g, gi) => {
+        const latest = g.notes[0];
+        const accent = NOTE_ACCENTS[latest.color] || NOTE_ACCENTS.white;
+        const bg = NOTE_COLORS[latest.color] || NOTE_COLORS.white;
+        const open = isOpen(g);
+        const pinned = g.notes.some(n => n.pinned);
+        const head = `<tr class="note-group-row ${open ? 'open' : ''}" style="background:${bg};">
+          <td class="note-dt" style="border-left:5px solid ${accent};">${noteDateTime(latest)}</td>
+          <td>
+            <button class="note-title-btn" onclick="toggleNoteGroup(${gi})" aria-expanded="${open}">
+              <span class="note-caret">${open ? '▾' : '▸'}</span>${h(g.title)}
+            </button>
+            ${g.notes.length > 1 ? `<span class="note-count" style="background:${accent};">${g.notes.length}</span>` : ''}
+            ${pinned ? '<span title="Pinned" style="margin-left:4px;">📌</span>' : ''}
+          </td>
+          <td class="note-preview">${open ? `<span style="color:var(--muted);font-size:12px;">${g.notes.length} note${g.notes.length > 1 ? 's' : ''}</span>` : h(latest.body || '')}</td>
+        </tr>`;
+        if (!open) return head;
+        return head + g.notes.map(n => {
+          const a = NOTE_ACCENTS[n.color] || NOTE_ACCENTS.white;
+          return `<tr class="note-entry-row">
+            <td class="note-dt" style="border-left:5px solid ${a};">${noteDateTime(n)}</td>
+            <td><span class="note-color-dot" style="background:${a};"></span>${h(n.title || 'Untitled')}${n.pinned ? ' 📌' : ''}</td>
+            <td>
+              <div class="note-full">${h(n.body || '') || '<span style="color:var(--muted);">(no text)</span>'}</div>
+              <div class="note-actions">
+                <button class="secondary" onclick="openNoteEditor('${n.id}')">✏️ Edit</button>
+                <button class="danger" onclick="deleteNote('${n.id}')">🗑 Delete</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function toggleNoteGroup(i) {
+  const g = (window.__noteGroups || [])[i];
+  if (!g) return;
+  if (notesExpanded.has(g.key)) notesExpanded.delete(g.key); else notesExpanded.add(g.key);
+  drawNotesGrid();
 }
 
 function openNoteEditor(id) {
@@ -813,19 +879,30 @@ async function saveNote(id) {
     pinned: document.getElementById('notePinned').checked,
     updated_at: new Date().toISOString()
   };
-  const { error } = id
-    ? await sb.from('pgds_notes').update(row).eq('id', id)
-    : await sb.from('pgds_notes').insert({ ...row, user_id: currentUser.id });
+  // Ask the database to return the saved row so the list can update immediately
+  const { data: saved, error } = id
+    ? await sb.from('pgds_notes').update(row).eq('id', id).select().single()
+    : await sb.from('pgds_notes').insert({ ...row, user_id: currentUser.id }).select().single();
   if (error) return toast(error.message, 'error');
   closePopover();
+  upsertLocalNote(saved);
   toast(id ? '✓ Note updated' : '✓ Note saved');
-  renderNotesPane();
 }
 
-async function togglePinNote(id, pinned) {
-  const { error } = await sb.from('pgds_notes').update({ pinned }).eq('id', id);
-  if (error) return toast(error.message, 'error');
-  renderNotesPane();
+function sortNotes(list) {
+  return list.sort((a, b) =>
+    (b.pinned === true) - (a.pinned === true) ||
+    new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+}
+
+// Put a saved note into the on-screen list without waiting for a re-fetch
+function upsertLocalNote(note) {
+  if (!note) return renderNotesPane();
+  const list = window.__pgdsNotes || [];
+  const i = list.findIndex(n => n.id === note.id);
+  if (i >= 0) list[i] = note; else list.unshift(note);
+  window.__pgdsNotes = sortNotes(list);
+  if (document.getElementById('notesGrid')) drawNotesGrid(); else renderNotesPane();
 }
 
 async function deleteNote(id) {
@@ -833,8 +910,9 @@ async function deleteNote(id) {
   const { error } = await sb.from('pgds_notes').delete().eq('id', id);
   if (error) return toast(error.message, 'error');
   closePopover();
+  window.__pgdsNotes = (window.__pgdsNotes || []).filter(n => n.id !== id);
+  if (document.getElementById('notesGrid')) drawNotesGrid(); else renderNotesPane();
   toast('Note deleted');
-  renderNotesPane();
 }
 
 // ---------- GUIDE ----------
