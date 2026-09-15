@@ -374,7 +374,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v11.3-notes-table';
+const APP_VERSION = 'v11.4-sharp';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1286,7 +1286,7 @@ function removeFile(i) { selectedFiles.splice(i, 1); updateFileList(); }
 
 // Downscale + re-encode a photo so the resulting PDF stays small and fast to re-save.
 // Documents stay perfectly readable at 2000px on the long edge.
-async function compressImage(file, maxDim = 2000, quality = 0.82) {
+async function compressImage(file, maxDim = 3000, quality = 0.9) {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale), hgt = Math.round(bitmap.height * scale);
@@ -1460,10 +1460,13 @@ async function openInAppViewer(bucket, path) {
         const viewport = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
         canvas.className = 'pdf-page';
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        canvas.style.marginBottom = '12px';
+        canvas.style.width = viewport.width + 'px'; canvas.style.height = 'auto';
+        canvas.style.maxWidth = '100%'; canvas.style.marginBottom = '12px';
         body.appendChild(canvas);
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const q = renderQuality(viewport.width, viewport.height, 1);
+        const hiVp = page.getViewport({ scale: scale * q });
+        canvas.width = Math.floor(hiVp.width); canvas.height = Math.floor(hiVp.height);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: hiVp }).promise;
       }
     } catch (err) {
       body.innerHTML = `<div class="msg error">Could not render: ${err.message}. <a href="${url}" target="_blank" style="color:#fff;">Open in new tab</a></div>`;
@@ -2522,6 +2525,7 @@ async function loadDocForSigning() {
 async function renderPdfPages(pdfBytes) {
   const modalDoc = document.getElementById('modalDoc');
   const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+  sigState.pdfDoc = pdf;
   modalDoc.innerHTML = ''; sigState.pages = []; sigState.pageInfo = []; sigState.pageWraps = [];
   // Base fit-to-width scale
   const containerWidth = Math.max(320, modalDoc.clientWidth - 40);
@@ -2550,14 +2554,19 @@ async function renderPdfPages(pdfBytes) {
     wrap.className = 'pdf-page';
     wrap.style.width = viewport.width + 'px'; wrap.style.height = viewport.height + 'px';
     const canvas = document.createElement('canvas');
-    canvas.width = viewport.width; canvas.height = viewport.height;
+    // CSS size stays at the fit-to-width layout size; the backing store is rendered sharper
+    canvas.style.width = viewport.width + 'px'; canvas.style.height = viewport.height + 'px';
     wrap.appendChild(canvas);
     sizer.appendChild(wrap);
     modalDoc.appendChild(sizer);
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const q = renderQuality(viewport.width, viewport.height, 1);
+    const hiVp = page.getViewport({ scale: scale * q });
+    canvas.width = Math.floor(hiVp.width); canvas.height = Math.floor(hiVp.height);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: hiVp }).promise;
     sigState.pages.push(wrap);
     sigState.pageWraps.push(sizer);
-    sigState.pageInfo.push({ w: viewport.width, h: viewport.height });
+    // w/h are layout (CSS) pixels - signature placement math depends on these
+    sigState.pageInfo.push({ w: viewport.width, h: viewport.height, scale, renderedAt: q });
   }
   // Add a page navigator strip at the top
   if (sigState.pages.length > 1) {
@@ -2574,6 +2583,43 @@ async function renderPdfPages(pdfBytes) {
   sigState.pageWraps.forEach((sizer, i) => attachPinchZoomOnPage(sizer, i));
 }
 
+// How many device pixels to render per layout pixel. Accounts for high-DPI screens and zoom,
+// capped by total pixel area so phones don't run out of canvas memory.
+function renderQuality(cssW, cssH, zoom) {
+  const dpr = window.devicePixelRatio || 1;
+  const MAX_PIXELS = 12e6;
+  let q = Math.max(2, dpr) * (zoom || 1);
+  q = Math.min(q, Math.sqrt(MAX_PIXELS / Math.max(1, cssW * cssH)));
+  return Math.max(1, q);
+}
+
+// After zooming settles, redraw that page at a higher resolution so fine print stays crisp
+function scheduleHiResRender(idx) {
+  sigState.hiResTimers = sigState.hiResTimers || {};
+  clearTimeout(sigState.hiResTimers[idx]);
+  sigState.hiResTimers[idx] = setTimeout(() => rerenderPageSharp(idx), 350);
+}
+
+async function rerenderPageSharp(idx) {
+  const pdf = sigState.pdfDoc, info = sigState.pageInfo[idx], wrap = sigState.pages[idx];
+  if (!pdf || !info || !wrap || !info.scale) return;
+  const want = renderQuality(info.w, info.h, pageZoom(idx));
+  if (info.renderedAt && want <= info.renderedAt * 1.05) return; // already sharp enough
+  const token = (info.token = (info.token || 0) + 1);
+  try {
+    const page = await pdf.getPage(idx + 1);
+    const c = document.createElement('canvas');
+    c.style.width = info.w + 'px'; c.style.height = info.h + 'px';
+    const vp = page.getViewport({ scale: info.scale * want });
+    c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    if (token !== info.token || !wrap.isConnected) return; // a newer render or a reload won
+    const old = wrap.querySelector('canvas');
+    if (old) wrap.replaceChild(c, old); else wrap.insertBefore(c, wrap.firstChild);
+    info.renderedAt = want;
+  } catch (e) { /* keep the existing canvas */ }
+}
+
 function applyPageZoom(idx) {
   const z = pageZoom(idx);
   const page = sigState.pages[idx];
@@ -2584,6 +2630,7 @@ function applyPageZoom(idx) {
   sizer.style.height = (page.offsetHeight * z) + 'px';
   const badge = sizer.querySelector('.page-zoom-badge');
   if (badge) badge.textContent = Math.round(z * 100) + '%';
+  scheduleHiResRender(idx);
 }
 
 function attachPinchZoomOnPage(sizer, idx) {
