@@ -361,7 +361,7 @@
   .sig-overlay { position: absolute; border: 2px dashed var(--green-700); cursor: move; background: rgba(13,92,47,.04); user-select: none; touch-action: none; }
   .sig-overlay.locked { border: none; background: transparent; cursor: default; pointer-events: none; }
   .sig-overlay img, .sig-overlay .sig-text { width: 100%; height: 100%; pointer-events: none; display: block; }
-  .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', 'Dancing Script', cursive; font-size: 32px; color: var(--green-900); white-space: nowrap; }
+  .sig-overlay .sig-text { display: flex; align-items: center; justify-content: center; font-family: 'Brush Script MT', 'Dancing Script', cursive; font-size: 32px; color: #1e40af; white-space: nowrap; }
   .sig-overlay .sig-text.date { font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #1e40af; }
   .sig-overlay .sig-text.stamp { font-family: Arial, sans-serif; font-weight: 900; color: var(--red); border: 3px solid var(--red); border-radius: 6px; }
   .sig-overlay .resize-handle { position: absolute; right: -8px; bottom: -8px; width: 20px; height: 20px; background: var(--green-700); border-radius: 10px; cursor: nwse-resize; }
@@ -442,7 +442,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v12-announcements';
+const APP_VERSION = 'v12.1-uploaded-col';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2471,11 +2471,12 @@ async function renderApprovedFolders(el) {
           <span class="count">${items.length}</span>
         </div>
         <div class="folder-body">
-          <table><thead><tr><th>Title</th><th>Uploaded by</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
+          <table><thead><tr><th>Title</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
             ${items.map(({d, up}) => `<tr>
               <td><strong>${h(d.title)}</strong></td>
               <td>${h(up.full_name || up.email || '-')}</td>
-              <td>${d.signed_at ? new Date(d.signed_at).toLocaleString() : '-'}</td>
+              <td>${d.created_at ? fmtDateTime(d.created_at) : '-'}</td>
+              <td>${d.signed_at ? fmtDateTime(d.signed_at) : '-'}</td>
               <td class="actions">
                 <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
                 <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
