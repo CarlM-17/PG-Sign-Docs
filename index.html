@@ -451,7 +451,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v13-staff-ui';
+const APP_VERSION = 'v13.1-notes';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1632,7 +1632,7 @@ function guideHTML() {
         <li><strong>Give it a clear title</strong> - e.g. "RFP - Danlhey Paint Center - Sept 2026".</li>
         <li><strong>Choose the urgency</strong> that honestly reflects the deadline.</li>
         <li><strong>Add the files</strong> - tap <em>Choose files</em> to pick from your device, or <em>Take photo</em> to capture pages with your camera. Multiple pages of the <em>same</em> document are merged into one file automatically.</li>
-        <li><strong>Add notes</strong> if there is anything the signer should know.</li>
+        <li><strong>Write the notes</strong> - this is required. Briefly explain what the document is and why it needs to be signed.</li>
         <li><strong>Tap Upload for signature</strong> and watch the status on your dashboard.</li>
       </ol>
     </div>
@@ -1882,7 +1882,11 @@ function renderUploadPane() {
             <div id="fileList" class="file-list"></div>
           </div>
         </div>
-        <div class="form-group"><label>Notes (optional)</label><textarea id="docNotes" placeholder="Any note for the signer..."></textarea></div>
+        <div class="form-group">
+          <label>Notes *</label>
+          <p style="font-size:12px;color:var(--muted);margin:-2px 0 6px;">Briefly explain what this document is and why it needs to be signed, so the signer can review it quickly.</p>
+          <textarea id="docNotes" required placeholder="e.g. Tire replacement request for the L300 service vehicle - needs approval before the supplier can deliver."></textarea>
+        </div>
         <button type="submit" id="uploadBtn">Upload for signature</button>
       </form>
     </div>`;
@@ -2060,11 +2064,12 @@ async function mergeFilesToPdf(files) {
 
 async function handleUpload(e) {
   e.preventDefault();
-  if (!selectedFiles.length) return alert('Please choose at least one file.');
+  if (!selectedFiles.length) return toast('Please choose at least one file.', 'warn');
   const title = document.getElementById('docTitle').value.trim();
   const urgency = document.getElementById('docUrgency').value;
   const notes = document.getElementById('docNotes').value.trim();
-  if (!title) return;
+  if (!title) return toast('Add a document title.', 'warn');
+  if (!notes) return toast('Add a brief explanation in Notes.', 'warn');
   const btn = document.getElementById('uploadBtn'); btn.disabled = true; btn.textContent = 'Uploading...';
   try {
     const pdfBytes = selectedFiles.length === 1 && selectedFiles[0].name.toLowerCase().endsWith('.pdf') ? new Uint8Array(await selectedFiles[0].arrayBuffer()) : await mergeFilesToPdf(selectedFiles);
@@ -2567,9 +2572,10 @@ async function renderApprovedFolders(el) {
           <span class="count">${items.length}</span>
         </div>
         <div class="folder-body">
-          <table><thead><tr><th>Title</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
+          <table><thead><tr><th>Title</th><th>Notes</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
             ${items.map(({d, up}) => `<tr>
               <td><strong>${h(d.title)}</strong></td>
+              <td style="font-size:13px;color:#4b5563;max-width:260px;">${d.notes ? h(d.notes) : '<span style="color:var(--muted);">-</span>'}</td>
               <td>${h(up.full_name || up.email || '-')}</td>
               <td>${d.created_at ? fmtDateTime(d.created_at) : '-'}</td>
               <td>${d.signed_at ? fmtDateTime(d.signed_at) : '-'}</td>
