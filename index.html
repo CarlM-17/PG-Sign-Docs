@@ -135,6 +135,15 @@
   .remark-actions { display: flex; gap: 4px; margin-top: 6px; }
   .remark-actions button { padding: 3px 8px; font-size: 11px; }
   .staff-remark { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 12px; color: #78350f; white-space: pre-wrap; }
+  /* Staff dashboard charts */
+  .stack-bar { display: flex; height: 26px; border-radius: 13px; overflow: hidden; background: #f1f5f9; }
+  .stack-bar.sm { height: 10px; border-radius: 5px; }
+  .stack-seg { height: 100%; }
+  .chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--text); }
+  .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .chart-legend strong { color: var(--green-900); }
+  .title-mix { min-width: 120px; }
   /* Announcements and messages */
   .ann-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
   .post-list { display: flex; flex-direction: column; gap: 10px; }
@@ -442,7 +451,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v12.2-activity';
+const APP_VERSION = 'v13-staff-ui';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -494,7 +503,7 @@ let authMode = 'login';
 let adminView = 'dashboard';
 let docsFilter = 'pending';
 let staffTab = 'pending';
-let staffView = 'docs';
+let staffView = 'dashboard';
 let selectedFiles = [];
 
 function h(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1198,7 +1207,7 @@ function openMessagesFromReminder(btn) {
 // ---------- STAFF TABS ----------
 function staffTabsHTML() {
   const t = (v, label) => `<div class="tab ${staffView === v ? 'active' : ''}" data-sv="${v}">${label}</div>`;
-  return `<div class="tabs">${t('docs', '📄 My Documents')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
+  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${t('upload', '➕ Add Docs for Signing')}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
 }
 
 // ---------- TO-DO (private per staff) ----------
@@ -1716,108 +1725,188 @@ function toggleMenu(e) {
 
 async function renderStaff() {
   setTimeout(updateMsgUnread, 0);
-  if (staffView === 'todo' || staffView === 'notes' || staffView === 'messages') {
-    app.innerHTML = `
-      ${headerHTML({ todo: 'To-Do', notes: 'Notes', messages: 'Messages' }[staffView])}
-      <div class="container">
-        ${staffTabsHTML()}
-        <div id="staffPane"><p class="empty">Loading...</p></div>
-      </div>`;
-    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
-    centerActiveTabs();
-    if (staffView === 'todo') renderTodoPane(); else if (staffView === 'notes') renderNotesPane(); else renderMessagesPane();
-    return;
-  }
-  if (staffView === 'guide') {
-    app.innerHTML = `
-      ${headerHTML('Guide')}
-      <div class="container">
-        ${staffTabsHTML()}
-        ${guideHTML()}
-      </div>`;
-    document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
-    centerActiveTabs();
-    return;
-  }
+  const titles = { dashboard: 'Dashboard', upload: 'Add Docs for Signing', status: 'Documents Status', messages: 'Messages', todo: 'To-Do', notes: 'Notes', guide: 'Admin Staff Guide' };
   app.innerHTML = `
-    ${headerHTML('My Documents')}
+    ${headerHTML(titles[staffView] || 'Dashboard')}
     <div class="container">
       ${staffTabsHTML()}
-      <div id="staffKpis" class="kpi-row"></div>
-      <div class="box">
-        <h3>My stores</h3>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">These are the stores you can upload for. Need another one? Request it - the signer will approve it.</p>
-        <div class="store-chips" id="myStoreChips">${storeChips(currentUser.stores)}</div>
-        <div id="myStoreRequests"></div>
-        <button class="secondary" style="margin-top:10px;" onclick="openStoreRequestDialog()">➕ Request additional store</button>
-      </div>
-      <div class="box">
-        <h3>Upload documents for signature</h3>
-        <div class="upload-note">
-          <strong>Note:</strong> Please file / upload documents <strong>per title or per document name</strong>. If a single document has multiple pages or photos, add them all together here — they will be merged into one signed file.
-        </div>
-        <div id="uploadMsg"></div>
-        <form id="uploadForm">
-          ${(currentUser.stores || []).length > 1 ? `
-          <div class="form-group">
-            <label>Which store is this document for? *</label>
-            <select id="docStore" required>
-              ${currentUser.stores.map((s, i) => `<option value="${i}">${h(s.store_number)} - ${h(s.store_name)}</option>`).join('')}
-            </select>
-          </div>` : ''}
-          <div class="form-group"><label>Document title *</label><input type="text" id="docTitle" required placeholder="e.g. September expense report"></div>
-          <div class="row2">
-            <div class="form-group"><label>Urgency</label><select id="docUrgency">
-              <option value="low">Low</option><option value="normal" selected>Normal</option>
-              <option value="high">High</option><option value="urgent">Urgent</option>
-            </select></div>
-            <div class="form-group"><label>Files (PDF/JPG/PNG, max 5MB each) *</label>
-              <label for="fileInput" class="file-drop" id="fileDrop"><span id="fileDropText">Choose files or take a photo</span></label>
-              <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
-              <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple>
-              <div class="upload-buttons">
-                <button type="button" class="secondary" onclick="document.getElementById('fileInput').click()">📁 Choose files</button>
-                <button type="button" class="gold" onclick="document.getElementById('cameraInput').click()">📷 Take photo</button>
-              </div>
-              <div id="fileList" class="file-list"></div>
-            </div>
-          </div>
-          <div class="form-group"><label>Notes (optional)</label><textarea id="docNotes" placeholder="Any note for the signer..."></textarea></div>
-          <button type="submit" id="uploadBtn">Upload for signature</button>
-        </form>
-      </div>
-      <h2 style="font-size:16px;margin-bottom:12px;color:var(--green-900);">My Documents</h2>
-      <div class="tabs">
-        <div class="tab ${staffTab==='pending'?'active':''}" data-t="pending">Pending</div>
-        <div class="tab ${staffTab==='approved'?'active':''}" data-t="approved">Approved</div>
-        <div class="tab ${staffTab==='rejected'?'active':''}" data-t="rejected">Rejected</div>
-      </div>
-      <div id="docList"></div>
+      <div id="staffPane"><p class="empty">Loading...</p></div>
     </div>`;
   document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
-    centerActiveTabs();
-  document.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStaff(); });
+  centerActiveTabs();
+  if (staffView === 'upload') return renderUploadPane();
+  if (staffView === 'status') return renderStatusPane();
+  if (staffView === 'messages') return renderMessagesPane();
+  if (staffView === 'todo') return renderTodoPane();
+  if (staffView === 'notes') return renderNotesPane();
+  if (staffView === 'guide') { document.getElementById('staffPane').innerHTML = guideHTML(); return; }
+  return renderStaffDashboard();
+}
+
+// ---------- STAFF DASHBOARD ----------
+const STATUS_COLORS = { pending: '#f59e0b', approved: '#10b981', rejected: '#dc2626' };
+
+async function renderStaffDashboard() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  const { data, error } = await sb.from('pgds_documents')
+    .select('id,title,status,created_at,signed_at,store_number,store_name,urgency')
+    .eq('uploader_id', currentUser.id);
+  if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  const all = data || [];
+  const pending = all.filter(d => d.status === 'pending');
+  const approved = all.filter(d => d.status === 'approved');
+  const rejected = all.filter(d => d.status === 'rejected');
+  const now = new Date();
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
+  const submittedToday = all.filter(d => sameDay(new Date(d.created_at), now)).length;
+  const thisMonth = all.filter(d => { const x = new Date(d.created_at); return x.getMonth() === now.getMonth() && x.getFullYear() === now.getFullYear(); }).length;
+  const oldestPending = pending.reduce((m, d) => Math.max(m, ageHours(d.created_at)), 0);
+  const avgTurnaround = approved.length ? approved.reduce((s, d) => s + ageHours(d.created_at, d.signed_at), 0) / approved.length : 0;
+  const pct = n => all.length ? (n / all.length * 100) : 0;
+
+  // Group by document title / category
+  const byTitle = {};
+  all.forEach(d => {
+    const label = (d.title || 'Untitled').trim() || 'Untitled';
+    const key = label.toLowerCase();
+    if (!byTitle[key]) byTitle[key] = { label, total: 0, pending: 0, approved: 0, rejected: 0 };
+    byTitle[key].total++;
+    byTitle[key][d.status] = (byTitle[key][d.status] || 0) + 1;
+  });
+  const titleRows = Object.values(byTitle).sort((a, b) => b.total - a.total);
+
+  // Last 6 months of submissions
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString([], { month: 'short' }), count: 0 });
+  }
+  const mIdx = {}; months.forEach((m, i) => { mIdx[m.key] = i; });
+  all.forEach(d => {
+    const x = new Date(d.created_at);
+    const k = `${x.getFullYear()}-${x.getMonth()}`;
+    if (mIdx[k] !== undefined) months[mIdx[k]].count++;
+  });
+  const maxMonth = Math.max(1, ...months.map(m => m.count));
+
+  pane.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi blue"><div class="label">Total submitted</div><div class="value">${all.length}</div><div class="sub">${thisMonth} this month · ${submittedToday} today</div></div>
+      <div class="kpi gold"><div class="label">Pending</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h waiting' : 'All caught up'}</div></div>
+      <div class="kpi"><div class="label">Approved</div><div class="value">${approved.length}</div><div class="sub">${all.length ? Math.round(pct(approved.length)) + '% of all' : 'None yet'}</div></div>
+      <div class="kpi red"><div class="label">Rejected</div><div class="value">${rejected.length}</div><div class="sub">${all.length ? Math.round(pct(rejected.length)) + '% of all' : 'None yet'}</div></div>
+      <div class="kpi blue"><div class="label">Avg turnaround</div><div class="value">${avgTurnaround.toFixed(1)}h</div><div class="sub">Upload → signature</div></div>
+    </div>
+
+    ${all.length ? `
+    <div class="chart-box">
+      <h3>📊 Status breakdown</h3>
+      <div class="stack-bar">
+        ${pending.length ? `<div class="stack-seg" style="width:${pct(pending.length)}%;background:${STATUS_COLORS.pending};" title="Pending: ${pending.length}"></div>` : ''}
+        ${approved.length ? `<div class="stack-seg" style="width:${pct(approved.length)}%;background:${STATUS_COLORS.approved};" title="Approved: ${approved.length}"></div>` : ''}
+        ${rejected.length ? `<div class="stack-seg" style="width:${pct(rejected.length)}%;background:${STATUS_COLORS.rejected};" title="Rejected: ${rejected.length}"></div>` : ''}
+      </div>
+      <div class="chart-legend">
+        <span><i style="background:${STATUS_COLORS.pending}"></i> Pending <strong>${pending.length}</strong> (${Math.round(pct(pending.length))}%)</span>
+        <span><i style="background:${STATUS_COLORS.approved}"></i> Approved <strong>${approved.length}</strong> (${Math.round(pct(approved.length))}%)</span>
+        <span><i style="background:${STATUS_COLORS.rejected}"></i> Rejected <strong>${rejected.length}</strong> (${Math.round(pct(rejected.length))}%)</span>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>📈 Documents submitted (last 6 months)</h3>
+      <div class="bar-chart">
+        ${months.map(m => `<div class="bar" style="height:${Math.max(4, m.count / maxMonth * 140)}px" title="${m.label}: ${m.count}"><span class="val">${m.count}</span><span class="lbl">${m.label}</span></div>`).join('')}
+      </div>
+      <div style="height:24px;"></div>
+    </div>
+
+    <div class="box">
+      <h3>Documents by title / category</h3>
+      <table><thead><tr><th>Title / category</th><th>Total</th><th>Pending</th><th>Approved</th><th>Rejected</th><th class="title-mix">Mix</th></tr></thead><tbody>
+        ${titleRows.map(r => `<tr>
+          <td><strong>${h(r.label)}</strong></td>
+          <td>${r.total}</td>
+          <td>${r.pending || 0}</td>
+          <td>${r.approved || 0}</td>
+          <td>${r.rejected || 0}</td>
+          <td class="title-mix"><div class="stack-bar sm">
+            ${r.pending ? `<div class="stack-seg" style="width:${r.pending / r.total * 100}%;background:${STATUS_COLORS.pending};"></div>` : ''}
+            ${r.approved ? `<div class="stack-seg" style="width:${r.approved / r.total * 100}%;background:${STATUS_COLORS.approved};"></div>` : ''}
+            ${r.rejected ? `<div class="stack-seg" style="width:${r.rejected / r.total * 100}%;background:${STATUS_COLORS.rejected};"></div>` : ''}
+          </div></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>` : '<p class="empty">No documents yet. Go to Add Docs for Signing to submit your first one.</p>'}`;
+}
+
+// ---------- ADD DOCS FOR SIGNING ----------
+function renderUploadPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  pane.innerHTML = `
+    <div class="box">
+      <h3>My stores</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">These are the stores you can upload for. Need another one? Request it - the signer will approve it.</p>
+      <div class="store-chips" id="myStoreChips">${storeChips(currentUser.stores)}</div>
+      <div id="myStoreRequests"></div>
+      <button class="secondary" style="margin-top:10px;" onclick="openStoreRequestDialog()">➕ Request additional store</button>
+    </div>
+    <div class="box">
+      <h3>Upload documents for signature</h3>
+      <div class="upload-note">
+        <strong>Note:</strong> Please file / upload documents <strong>per title or per document name</strong>. If a single document has multiple pages or photos, add them all together here — they will be merged into one signed file.
+      </div>
+      <div id="uploadMsg"></div>
+      <form id="uploadForm">
+        ${(currentUser.stores || []).length > 1 ? `
+        <div class="form-group">
+          <label>Which store is this document for? *</label>
+          <select id="docStore" required>
+            ${currentUser.stores.map((s, i) => `<option value="${i}">${h(s.store_number)} - ${h(s.store_name)}</option>`).join('')}
+          </select>
+        </div>` : ''}
+        <div class="form-group"><label>Document title *</label><input type="text" id="docTitle" required placeholder="e.g. September expense report"></div>
+        <div class="row2">
+          <div class="form-group"><label>Urgency</label><select id="docUrgency">
+            <option value="low">Low</option><option value="normal" selected>Normal</option>
+            <option value="high">High</option><option value="urgent">Urgent</option>
+          </select></div>
+          <div class="form-group"><label>Files (PDF/JPG/PNG, max 5MB each) *</label>
+            <label for="fileInput" class="file-drop" id="fileDrop"><span id="fileDropText">Choose files or take a photo</span></label>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple>
+            <div class="upload-buttons">
+              <button type="button" class="secondary" onclick="document.getElementById('fileInput').click()">📁 Choose files</button>
+              <button type="button" class="gold" onclick="document.getElementById('cameraInput').click()">📷 Take photo</button>
+            </div>
+            <div id="fileList" class="file-list"></div>
+          </div>
+        </div>
+        <div class="form-group"><label>Notes (optional)</label><textarea id="docNotes" placeholder="Any note for the signer..."></textarea></div>
+        <button type="submit" id="uploadBtn">Upload for signature</button>
+      </form>
+    </div>`;
   document.getElementById('fileInput').onchange = handleFilePick;
   document.getElementById('cameraInput').onchange = handleFilePick;
   document.getElementById('uploadForm').onsubmit = handleUpload;
   selectedFiles = [];
   updateFileList();
-  loadStaffKpis();
   loadMyStoreRequests();
-  loadMyDocs();
 }
 
-async function loadStaffKpis() {
-  const el = document.getElementById('staffKpis');
-  const { data } = await sb.from('pgds_documents').select('status,created_at,signed_at').eq('uploader_id', currentUser.id);
-  const pending = (data||[]).filter(d => d.status === 'pending');
-  const approved = (data||[]).filter(d => d.status === 'approved');
-  const oldestPending = pending.reduce((min, d) => Math.max(min, ageHours(d.created_at)), 0);
-  const avgTurnaround = approved.length ? approved.reduce((s, d) => s + ageHours(d.created_at, d.signed_at), 0) / approved.length : 0;
-  el.innerHTML = `
-    <div class="kpi gold"><div class="label">My Pending</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h' : 'All caught up'}</div></div>
-    <div class="kpi"><div class="label">Approved</div><div class="value">${approved.length}</div><div class="sub">Total signed</div></div>
-    <div class="kpi blue"><div class="label">Avg turnaround</div><div class="value">${avgTurnaround.toFixed(1)}h</div><div class="sub">From upload to signing</div></div>`;
+// ---------- DOCUMENTS STATUS ----------
+function renderStatusPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  pane.innerHTML = `
+    <h2 style="font-size:16px;margin-bottom:12px;color:var(--green-900);">Documents Status</h2>
+    <div class="tabs">
+      <div class="tab ${staffTab==='pending'?'active':''}" data-t="pending">Pending</div>
+      <div class="tab ${staffTab==='approved'?'active':''}" data-t="approved">Approved</div>
+      <div class="tab ${staffTab==='rejected'?'active':''}" data-t="rejected">Rejected</div>
+    </div>
+    <div id="docList"></div>`;
+  pane.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStatusPane(); });
+  loadMyDocs();
 }
 
 // Staff: show their own store requests under the assigned chips
@@ -1996,7 +2085,7 @@ async function handleUpload(e) {
     showMsg('uploadMsg', `Uploaded! ${selectedFiles.length} file(s) merged into one signed queue.`, 'success');
     document.getElementById('uploadForm').reset();
     selectedFiles = []; updateFileList();
-    staffTab = 'pending'; renderStaff();
+    staffTab = 'pending';
   } catch (err) { showMsg('uploadMsg', err.message || err, 'error'); }
   finally { btn.disabled = false; btn.textContent = 'Upload for signature'; }
 }
@@ -3616,7 +3705,7 @@ function closeSigningModal() {
 async function logout() {
   try { sessionStorage.removeItem('pgds_todo_reminded'); sessionStorage.removeItem('pgds_msg_reminded'); } catch (e) {}
   document.querySelectorAll('.reminder-stack, .todo-reminder').forEach(e => e.remove());
-  await sb.auth.signOut(); currentUser = null; staffView = 'docs'; msgOpenPostId = null; annOpenPostId = null; route();
+  await sb.auth.signOut(); currentUser = null; staffView = 'dashboard'; msgOpenPostId = null; annOpenPostId = null; route();
 }
 function refreshApp() { window.location.reload(); }
 
