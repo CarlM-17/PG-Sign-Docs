@@ -480,7 +480,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v16.0-live';
+const APP_VERSION = 'v16.1-live';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2978,13 +2978,17 @@ async function renderApprovedFolders(el) {
 // The signed copy is kept, so nothing visible to staff changes.
 async function cleanupApprovedOriginals() {
   const { data, error } = await sb.from('pgds_documents')
-    .select('id, original_file_path')
+    .select('id, original_file_path, signed_file_path')
     .eq('status', 'approved')
     .not('original_file_path', 'is', null);
   if (error) return toast(error.message, 'error');
-  const paths = (data || []).map(d => d.original_file_path).filter(Boolean);
+  // Never drop an original unless a signed copy exists - otherwise the document
+  // would have no file left to open at all.
+  const rows = data || [];
+  const paths = rows.filter(d => d.signed_file_path).map(d => d.original_file_path).filter(Boolean);
+  const skipped = rows.length - paths.length;
   if (!paths.length) return toast('Nothing to clean up - no originals left.');
-  if (!confirm(`Free up space\n\nDelete ${paths.length} pre-signature original file(s)?\n\nThe signed copies stay exactly as they are. Files already deleted are skipped. This cannot be undone.`)) return;
+  if (!confirm(`Free up space\n\nDelete ${paths.length} pre-signature original file(s)?\n\nThe signed copies stay exactly as they are.${skipped ? `\n${skipped} document(s) are kept because they have no signed copy yet.` : ''}\nFiles already deleted are skipped. This cannot be undone.`)) return;
   let removed = 0;
   for (let i = 0; i < paths.length; i += 50) {
     const chunk = paths.slice(i, i + 50);
