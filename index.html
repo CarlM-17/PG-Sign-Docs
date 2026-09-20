@@ -480,7 +480,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v16.1-live';
+const APP_VERSION = 'v16.2-compress';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2295,7 +2295,7 @@ function removeFile(i) { selectedFiles.splice(i, 1); updateFileList(); }
 
 // Downscale + re-encode a photo so the resulting PDF stays small and fast to re-save.
 // Documents stay perfectly readable at 2000px on the long edge.
-async function compressImage(file, maxDim = 3000, quality = 0.9) {
+async function compressImage(file, maxDim = 2000, quality = 0.75) {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale), hgt = Math.round(bitmap.height * scale);
