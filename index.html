@@ -521,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v18.3-notefix';
+const APP_VERSION = 'v18.4-namefix';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1391,7 +1391,7 @@ function threadHTML(docId, opts = {}) {
   return `<div class="thread">${notes.map(n => `
     <div class="note ${n.author_id === currentUser.id ? 'mine' : ''}">
       ${n.author_id === currentUser.id || currentUser.role === 'admin'
-        ? `<button class="del" title="Delete" onclick="deleteNote('${n.id}','${docId}')">×</button>` : ''}
+        ? `<button class="del" title="Delete" onclick="deleteDocRemark('${n.id}','${docId}')">×</button>` : ''}
       <span class="who">${h(n.author_name || 'Someone')}</span><span class="pos">${h(POSITIONS[n.author_position] ? POSITIONS[n.author_position].short : 'Staff')}</span>
       <span class="when">${fmtDateTime(n.created_at)}</span>
       <div class="body">${h(n.body)}</div>
@@ -1412,7 +1412,7 @@ function openNoteDialog(docId, kind, title, hint, placeholder) {
     ${attachPickerHTML('noteFiles')}
     <div id="noteMsg"></div>
     <div style="display:flex;gap:8px;margin-top:10px;">
-      <button id="noteSaveBtn" onclick="saveNote('${docId}','${kind}')">💾 Save</button>
+      <button id="noteSaveBtn" onclick="saveDocRemark('${docId}','${kind}')">💾 Save</button>
       <button class="secondary" onclick="closePopover()">Cancel</button>
     </div>`;
   document.body.appendChild(back); document.body.appendChild(pop);
@@ -1424,7 +1424,7 @@ function noteMsg(text, type) {
   if (el) el.innerHTML = text ? `<div class="msg ${type || 'error'}" style="margin-top:10px;font-size:12px;">${text}</div>` : '';
 }
 
-async function saveNote(docId, kind) {
+async function saveDocRemark(docId, kind) {
   const text = (document.getElementById('noteText').value || '').trim();
   if (!text) return noteMsg('Type your explanation first.', 'warn');
   const picker = document.getElementById('noteFiles');
@@ -1508,7 +1508,7 @@ function describeDbError(e) {
        + (code ? ' ' + code : '') + advice;
 }
 
-async function deleteNote(noteId, docId) {
+async function deleteDocRemark(noteId, docId) {
   if (!confirm('Delete this remark?')) return;
   const doomed = (noteCache[docId] || []).find(n => n.id === noteId);
   const { data, error } = await sb.from('pgds_doc_notes').delete().eq('id', noteId).select('id');
