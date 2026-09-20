@@ -107,6 +107,7 @@
   .badge.high { background: #ffedd5; color: #9a3412; }
   .badge.normal { background: #dbeafe; color: #1e40af; }
   .badge.low { background: #f3f4f6; color: #374151; }
+  .badge.hold { background: #ede9fe; color: #5b21b6; }
   .age-badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
   .age-badge.fresh { background: #d1fadf; color: #065f46; }
   .age-badge.warm { background: #fef3c7; color: #92400e; }
@@ -345,6 +346,25 @@
   .auto-cat { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--green-50); border: 1px solid #d1fadf; border-radius: 8px; padding: 8px 10px; }
   .auto-cat span { font-size: 12px; color: var(--muted); }
 
+  /* On Hold + remark threads */
+  .hold-why { background: #f5f3ff; border: 1px solid #ddd6fe; border-left: 3px solid #7c3aed;
+              border-radius: 8px; padding: 9px 11px; font-size: 13px; color: #4c1d95; }
+  .hold-why .who { display: block; font-size: 11px; color: #6d28d9; margin-top: 5px; font-weight: 600; }
+  .thread { display: flex; flex-direction: column; gap: 7px; }
+  .thread .note { background: #f9fafb; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .thread .note.mine { background: var(--green-50); border-color: #bbf7d0; }
+  .thread .note .who { font-size: 11px; font-weight: 700; color: var(--green-900); }
+  .thread .note .pos { font-size: 10px; font-weight: 600; color: #fff; background: var(--green-700);
+                       border-radius: 20px; padding: 1px 7px; margin-left: 5px; }
+  .thread .note .when { font-size: 10px; color: var(--muted); margin-left: 6px; }
+  .thread .note .body { font-size: 13px; color: #374151; margin-top: 4px; white-space: pre-wrap; }
+  .thread .note .del { float: right; font-size: 11px; color: #b91c1c; cursor: pointer; background: none;
+                       border: 0; padding: 0 2px; }
+  .thread-empty { font-size: 12px; color: var(--muted); font-style: italic; }
+  .hold-note { display: flex; gap: 10px; align-items: flex-start; background: #f5f3ff; border: 1px solid #ddd6fe;
+               border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+  .hold-note .txt { font-size: 13px; color: #4c1d95; line-height: 1.55; }
+
   /* Archive */
   .archived-chip { display: inline-flex; align-items: center; gap: 5px; background: #eef2f7; color: #475569;
                    border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
@@ -501,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v17.0-archive';
+const APP_VERSION = 'v18.0-onhold';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1316,6 +1336,7 @@ const DOC_STATUS = {
   approved:       { label: 'Approved',       badge: 'approved', hint: 'Signed and finalized' },
   rejected:       { label: 'Rejected',       badge: 'rejected', hint: 'Rejected by the signer' },
   returned:       { label: 'Returned',       badge: 'high',     hint: 'Sent back by the Area Manager' },
+  on_hold:        { label: 'On Hold',        badge: 'hold',     hint: 'The signer asked for a justification' },
 };
 function myPosition() { return (currentUser && currentUser.position) || 'admin_staff'; }
 function isAreaManager() { return myPosition() === 'area_manager'; }
@@ -1337,6 +1358,216 @@ function stampsHTML(d) {
   </div>`;
 }
 
+// ---------- REMARK THREAD (shared by validation, on hold and the signing queue) ----------
+// Every remark carries the name AND position of whoever wrote it, so the signer
+// always knows who gave which explanation.
+let noteCache = {};
+
+async function loadNotes(docIds) {
+  if (!docIds.length) return {};
+  const { data, error } = await sb.from('pgds_doc_notes').select('*')
+    .in('doc_id', docIds).order('created_at', { ascending: true });
+  if (error) {
+    if (/pgds_doc_notes/.test(error.message || '')) toast('Run sql/phase15_hold_notes.sql in Supabase first.', 'error');
+    return {};
+  }
+  const map = {};
+  (data || []).forEach(n => { (map[n.doc_id] = map[n.doc_id] || []).push(n); });
+  noteCache = { ...noteCache, ...map };
+  docIds.forEach(id => { if (!map[id]) noteCache[id] = noteCache[id] || []; });
+  return map;
+}
+
+const NOTE_KIND = { validation: '🛡️ Validation remark', hold: '⏸️ Put on hold', explanation: '💬 Explanation' };
+
+function threadHTML(docId, opts = {}) {
+  const notes = (noteCache[docId] || []).filter(n => opts.kinds ? opts.kinds.includes(n.kind) : true);
+  if (!notes.length) return `<p class="thread-empty">${opts.empty || 'No remarks yet.'}</p>`;
+  return `<div class="thread">${notes.map(n => `
+    <div class="note ${n.author_id === currentUser.id ? 'mine' : ''}">
+      ${n.author_id === currentUser.id || currentUser.role === 'admin'
+        ? `<button class="del" title="Delete" onclick="deleteNote('${n.id}','${docId}')">×</button>` : ''}
+      <span class="who">${h(n.author_name || 'Someone')}</span><span class="pos">${h(POSITIONS[n.author_position] ? POSITIONS[n.author_position].short : 'Staff')}</span>
+      <span class="when">${fmtDateTime(n.created_at)}</span>
+      <div class="body">${h(n.body)}</div>
+    </div>`).join('')}</div>`;
+}
+
+function openNoteDialog(docId, kind, title, hint, placeholder) {
+  closePopover();
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>${h(title)}</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${hint}</p>
+    <textarea id="noteText" style="min-height:120px;font-size:14px;" placeholder="${h(placeholder)}"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="saveNote('${docId}','${kind}')">💾 Save</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+  setTimeout(() => { const t = document.getElementById('noteText'); if (t) t.focus(); }, 50);
+}
+
+async function saveNote(docId, kind) {
+  const text = (document.getElementById('noteText').value || '').trim();
+  if (!text) return toast('Type something first.', 'warn');
+  const { data, error } = await sb.from('pgds_doc_notes').insert({
+    doc_id: docId, author_id: currentUser.id, author_name: niceName(),
+    author_position: currentUser.role === 'admin' ? 'regional_manager' : myPosition(),
+    kind, body: text
+  }).select('*').single();
+  if (error) return toast(error.message, 'error');
+  (noteCache[docId] = noteCache[docId] || []).push(data);
+  closePopover();
+  toast('✓ Remark added');
+  refreshCurrentPane();
+}
+
+async function deleteNote(noteId, docId) {
+  if (!confirm('Delete this remark?')) return;
+  const { data, error } = await sb.from('pgds_doc_notes').delete().eq('id', noteId).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!data || !data.length) return toast('Could not delete - that remark is not yours.', 'error');
+  noteCache[docId] = (noteCache[docId] || []).filter(n => n.id !== noteId);
+  toast('Remark deleted');
+  refreshCurrentPane();
+}
+
+// Redraw whichever list is on screen, without a full page reload
+function refreshCurrentPane() {
+  if (currentUser.role === 'admin') return renderAdminView();
+  if (staffView === 'validate') return renderValidationPane();
+  if (staffView === 'hold') return renderHoldPane();
+  if (staffView === 'status') return loadMyDocs();
+  renderStaff();
+}
+
+// ---------- ON HOLD ----------
+// The signer parks a document that needs justification. Everyone who can see the
+// document can explain; only the Area Manager can send it back into the queue.
+async function renderHoldPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  pane.innerHTML = '<p class="empty">Loading documents on hold...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*')
+    .eq('status', 'on_hold').order('held_at', { ascending: true });
+  if (error) {
+    if (/hold_reason|on_hold/.test(error.message || '')) return pane.innerHTML = `<div class="msg error">Run sql/phase15_hold_notes.sql in Supabase first.</div>`;
+    return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  }
+  const list = data || [];
+  setHoldBadge(list.length);
+  await loadNotes(list.map(d => d.id));
+  const amCan = isAreaManager();
+  pane.innerHTML = `
+    <div class="hold-note">
+      <span style="font-size:22px;">⏸️</span>
+      <div class="txt">
+        <strong>The signer needs more information before signing these.</strong>
+        Add your explanation or justification below - it is shown to the Regional Manager with your name and position.
+        ${amCan
+          ? 'Once the explanation is complete, press <strong>Re-Validate</strong> to send the document back to the signing queue.'
+          : 'Your Area Manager re-validates it once the explanation is complete.'}
+      </div>
+    </div>
+    ${list.length ? `<table><thead><tr>
+      <th>Document</th><th>Store</th><th>Uploaded by</th><th>Why it is on hold</th><th>Explanations</th><th>Actions</th>
+    </tr></thead><tbody>
+      ${list.map(d => `<tr>
+        <td><strong>${h(d.title)}</strong>
+          ${d.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${h(d.notes)}</div>` : ''}
+          <div style="margin-top:4px;">${categoryChip(d.doc_category)}</div></td>
+        <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
+        <td>${h(d.uploader_name || '-')}</td>
+        <td style="max-width:260px;"><div class="hold-why">${h(d.hold_reason || 'No reason recorded')}
+          <span class="who">${h(d.held_name || 'Signer')} · ${d.held_at ? fmtDateTime(d.held_at) : ''}</span></div></td>
+        <td style="min-width:240px;">${threadHTML(d.id, { kinds: ['explanation','validation'], empty: 'No explanation yet - add one below.' })}
+          <button class="secondary" style="margin-top:8px;" onclick="openNoteDialog('${d.id}','explanation','Add explanation','Explain or justify this document. The signer sees your name and position with it.','e.g. This purchase was discussed with the Area Manager on 12 Sept; the supplier quote is attached on page 2.')">💬 Add explanation</button></td>
+        <td class="actions">
+          ${d.original_file_path ? `<button class="secondary" onclick="openInAppViewer('${d.signed_file_path ? 'pgds-signed' : 'pgds-pending'}','${d.signed_file_path || d.original_file_path}')">👁️ View</button>` : ''}
+          ${amCan ? `<button onclick="revalidateDoc('${d.id}')">✅ Re-Validate</button>` : ''}
+        </td>
+      </tr>`).join('')}
+    </tbody></table>` : '<p class="empty">👍 Nothing is on hold right now.</p>'}`;
+}
+
+function setHoldBadge(n) {
+  const b = document.getElementById('holdCount');
+  if (b) b.textContent = n ? `(${n})` : '';
+}
+async function updateHoldCount() {
+  if (!currentUser) return;
+  const { count, error } = await sb.from('pgds_documents').select('*', { count: 'exact', head: true }).eq('status', 'on_hold');
+  if (!error) setHoldBadge(count || 0);
+}
+
+// Area Manager sends a held document back into the signing queue
+async function revalidateDoc(id) {
+  const notes = (noteCache[id] || []).filter(n => n.kind === 'explanation');
+  if (!notes.length && !confirm('No explanation has been added yet.\n\nRe-validate anyway?')) return;
+  if (!confirm('Re-Validate\n\nThe explanation is complete and this document can go back to the Regional Manager for signing.')) return;
+  const { data: updated, error } = await sb.from('pgds_documents').update({
+    status: 'pending',
+    validated_by: currentUser.id,
+    validated_name: niceName(),
+    validated_at: new Date().toISOString()
+  }).eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!updated || !updated.length) return toast('Could not re-validate - permission denied.', 'error');
+  toast('✅ Re-validated and sent back for signing');
+  renderHoldPane();
+}
+
+// Signer puts a document on hold - a remark is required
+function openHoldDialog(docId) {
+  closePopover();
+  const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
+  const pop = document.createElement('div'); pop.className = 'popover';
+  pop.innerHTML = `
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+    <h4>⏸️ Put this document on hold</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+      Say what is missing or unclear. The uploader and the Area Manager both see this and can reply with a justification.
+      A reason is required.</p>
+    <textarea id="holdText" style="min-height:120px;font-size:14px;" placeholder="e.g. This was never discussed with me. Explain why the repair is needed and why this supplier."></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="holdDoc('${docId}')">⏸️ Put on hold</button>
+      <button class="secondary" onclick="closePopover()">Cancel</button>
+    </div>`;
+  document.body.appendChild(back); document.body.appendChild(pop);
+  setTimeout(() => { const t = document.getElementById('holdText'); if (t) t.focus(); }, 50);
+}
+
+async function holdDoc(docId) {
+  const reason = (document.getElementById('holdText').value || '').trim();
+  if (!reason) return toast('A reason is required to put a document on hold.', 'warn');
+  const now = new Date().toISOString();
+  const { data: updated, error } = await sb.from('pgds_documents').update({
+    status: 'on_hold', hold_reason: reason, held_by: currentUser.id, held_name: niceName(), held_at: now
+  }).eq('id', docId).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!updated || !updated.length) return toast('Could not put it on hold.', 'error');
+  // Keep the reason in the thread too, so the whole conversation reads in order
+  await sb.from('pgds_doc_notes').insert({
+    doc_id: docId, author_id: currentUser.id, author_name: niceName(),
+    author_position: 'regional_manager', kind: 'hold', body: reason
+  });
+  closePopover();
+  toast('⏸️ On hold - the store and Area Manager have been asked to explain');
+  renderAdminView(); updateAdminCounts();
+}
+
+// Signer releases a hold without waiting for the Area Manager
+async function releaseHold(docId) {
+  if (!confirm('Release this hold and put the document back in your signing queue?')) return;
+  const { data: updated, error } = await sb.from('pgds_documents').update({ status: 'pending' }).eq('id', docId).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!updated || !updated.length) return toast('Could not release the hold.', 'error');
+  toast('▶️ Back in the signing queue');
+  renderAdminView(); updateAdminCounts();
+}
+
 // ---------- AREA MANAGER: FOR VALIDATION ----------
 async function renderValidationPane() {
   const pane = document.getElementById('staffPane'); if (!pane) return;
@@ -1348,13 +1579,14 @@ async function renderValidationPane() {
   if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
   const list = data || [];
   setValidationBadge(list.length);
+  await loadNotes(list.map(d => d.id));
   pane.innerHTML = `
     <div class="privacy-note">
       <span class="privacy-icon">🛡️</span>
       <div><strong>You validate before the signer sees it.</strong> Review each document, then confirm it. Only validated documents reach the Regional Manager's signing queue. You do not sign here - the physical document is still signed as usual.</div>
     </div>
     ${list.length ? `<table><thead><tr>
-      <th>Document</th><th>Category</th><th>Store</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Waiting</th><th>Actions</th>
+      <th>Document</th><th>Category</th><th>Store</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Waiting</th><th>Remarks</th><th>Actions</th>
     </tr></thead><tbody>
       ${list.map(d => `<tr>
         <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${h(d.notes)}</div>` : ''}
@@ -1364,6 +1596,8 @@ async function renderValidationPane() {
         <td>${h(d.uploader_name || '-')}</td>
         <td>${fmtDateTime(d.created_at)}</td>
         <td>${ageBadge(ageHours(d.created_at))}</td>
+        <td style="min-width:220px;">${threadHTML(d.id, { empty: 'No remark yet.' })}
+          <button class="secondary" style="margin-top:8px;" onclick="openNoteDialog('${d.id}','validation','Add remark','Explain anything the signer should know, or note what is missing before you send this back. Your name and position are shown with it.','e.g. Discussed with me on 12 Sept - the repair is urgent. Quote attached on page 2.')">➕ Add remark</button></td>
         <td class="actions">
           <button class="secondary" onclick="openInAppViewer('pgds-pending','${d.original_file_path}')">👁️ View</button>
           <button onclick="validateDoc('${d.id}')">✅ Validate</button>
@@ -1431,7 +1665,7 @@ function staffTabsHTML() {
   const main = isAreaManager()
     ? t('validate', '🛡️ For Validation <span id="valCount"></span>')
     : t('upload', '➕ Add Docs for Signing');
-  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${main}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Store Ops Guide')}</div>`;
+  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${main}${t('hold', '⏸️ On Hold <span id="holdCount"></span>')}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Store Ops Guide')}</div>`;
 }
 
 // ---------- TO-DO (private per staff) ----------
@@ -1825,9 +2059,22 @@ function guideHTML() {
         <li><strong>Your Area Manager reviews it.</strong> They check it is complete and correct. They do not sign in the app - the physical document is still signed as usual.</li>
         <li><strong>If something is missing</strong> they send it back with a reason. The status becomes <strong>Returned</strong>, it appears on your Documents Status tab, you fix it and tap <strong>Resubmit</strong>.</li>
         <li><strong>Once validated</strong> it moves to the Regional Manager as <strong>For signature</strong>. Nothing reaches the signer unvalidated.</li>
+        <li><strong>If the signer needs more information</strong> they put it <strong>On Hold</strong> with a reason. See below.</li>
         <li><strong>After signing</strong> the status becomes <strong>Approved</strong> and you can download the signed copy.</li>
       </ol>
       <p style="font-size:13px;color:var(--muted);margin-top:8px;">Every document carries three stamps - <strong>uploaded</strong>, <strong>validated</strong>, and <strong>signed</strong> - each with the date, time and the name of the person.</p>
+    </div>
+
+    <div class="guide-steps">
+      <h4>⏸️ On Hold - when the signer asks for a justification</h4>
+      <ol>
+        <li><strong>Why it happens.</strong> If a document arrives without a clear justification - a purchase that was never discussed, a repair with no explanation - the Regional Manager puts it <strong>On Hold</strong> instead of rejecting it. A reason is required, so you always know what is being asked.</li>
+        <li><strong>Who sees it.</strong> It appears on the <strong>On Hold</strong> tab for the uploader, the Store Manager / Officer and the Area Manager of that store, all at once.</li>
+        <li><strong>Everyone can answer.</strong> Anyone who can see it may add an explanation or justification. Each entry is stamped with the <strong>name and position</strong> of whoever wrote it, so the signer knows exactly who said what.</li>
+        <li><strong>The Area Manager closes it.</strong> Once the explanation is complete, the Area Manager presses <strong>Re-Validate</strong> and the document goes back into the signing queue. Nobody else can move it out of hold.</li>
+        <li><strong>Nothing is lost.</strong> The document is not rejected and does not go back to the uploader - it simply waits, with the whole conversation attached to it.</li>
+      </ol>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;">Area Managers can also add a <strong>remark</strong> on the For Validation tab before validating or sending a document back - useful when the signer will need the background.</p>
     </div>
 
     <div class="guide-steps">
@@ -1835,7 +2082,7 @@ function guideHTML() {
       <ol>
         <li><span class="pos-chip admin_staff">Admin Staff</span> File <strong>Admin Docs</strong> for their store, and follow their status. They see the Admin Docs of their store.</li>
         <li><span class="pos-chip store_officer">Store Manager / Store Officer</span> File <strong>Store Ops Docs</strong> for their store. They see <strong>both</strong> Admin Docs and Store Ops Docs of their store.</li>
-        <li><span class="pos-chip area_manager">Area Manager</span> <strong>Validate</strong> every document from the stores under them before it goes for signing, or send it back with a reason. They do not upload or sign in the app.</li>
+        <li><span class="pos-chip area_manager">Area Manager</span> <strong>Validate</strong> every document from the stores under them before it goes for signing, or send it back with a reason. They also <strong>Re-Validate</strong> anything the signer puts on hold. They do not upload or sign in the app.</li>
         <li><span class="pos-chip regional_manager">Regional Manager</span> Signs the validated documents digitally and returns them, or rejects one with a reason.</li>
       </ol>
       <p style="font-size:13px;color:var(--muted);margin-top:8px;">You choose your position when you sign up, together with your store or stores. The Regional Manager approves every new account before it can be used.</p>
@@ -1994,6 +2241,7 @@ function toggleMenu(e) {
 async function renderStaff() {
   setTimeout(updateMsgUnread, 0);
   setTimeout(updateValidationCount, 0);
+  setTimeout(updateHoldCount, 0);
   if (staffView === 'upload' && isAreaManager()) staffView = 'validate';
   if (staffView === 'validate' && !isAreaManager()) staffView = 'upload';
   const titles = { dashboard: 'Dashboard', upload: 'Add Docs for Signing', validate: 'For Validation', status: 'Documents Status', messages: 'Messages', todo: 'To-Do', notes: 'Notes', guide: 'Admin Staff Store Ops Guide' };
@@ -2007,6 +2255,7 @@ async function renderStaff() {
   centerActiveTabs();
   if (staffView === 'upload') return renderUploadPane();
   if (staffView === 'validate') return renderValidationPane();
+  if (staffView === 'hold') return renderHoldPane();
   if (staffView === 'status') return renderStatusPane();
   if (staffView === 'messages') return renderMessagesPane();
   if (staffView === 'todo') return renderTodoPane();
@@ -2016,7 +2265,7 @@ async function renderStaff() {
 }
 
 // ---------- STAFF DASHBOARD ----------
-const STATUS_COLORS = { for_validation: '#8b5cf6', returned: '#f97316', pending: '#f59e0b', approved: '#10b981', rejected: '#dc2626' };
+const STATUS_COLORS = { for_validation: '#8b5cf6', returned: '#f97316', pending: '#f59e0b', on_hold: '#7c3aed', approved: '#10b981', rejected: '#dc2626' };
 
 async function renderStaffDashboard() {
   const pane = document.getElementById('staffPane'); if (!pane) return;
@@ -2027,6 +2276,7 @@ async function renderStaffDashboard() {
   const all = data || [];
   const forValidation = all.filter(d => d.status === 'for_validation');
   const returned = all.filter(d => d.status === 'returned');
+  const onHold = all.filter(d => d.status === 'on_hold');
   const pending = all.filter(d => d.status === 'pending');
   const approved = all.filter(d => d.status === 'approved');
   const rejected = all.filter(d => d.status === 'rejected');
@@ -2068,6 +2318,7 @@ async function renderStaffDashboard() {
       <div class="kpi blue"><div class="label">Total submitted</div><div class="value">${all.length}</div><div class="sub">${thisMonth} this month · ${submittedToday} today</div></div>
       <div class="kpi gold"><div class="label">For validation</div><div class="value">${forValidation.length}</div><div class="sub">Waiting for the Area Manager</div></div>
       <div class="kpi red"><div class="label">Returned</div><div class="value">${returned.length}</div><div class="sub">Needs fixing and resubmit</div></div>
+      <div class="kpi" style="border-left-color:#7c3aed;"><div class="label">On hold</div><div class="value">${onHold.length}</div><div class="sub">Needs your explanation</div></div>
       <div class="kpi gold"><div class="label">For signature</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h waiting' : 'All caught up'}</div></div>
       <div class="kpi"><div class="label">Approved</div><div class="value">${approved.length}</div><div class="sub">${all.length ? Math.round(pct(approved.length)) + '% of all' : 'None yet'}</div></div>
       <div class="kpi red"><div class="label">Rejected</div><div class="value">${rejected.length}</div><div class="sub">${all.length ? Math.round(pct(rejected.length)) + '% of all' : 'None yet'}</div></div>
@@ -2078,12 +2329,12 @@ async function renderStaffDashboard() {
     <div class="chart-box">
       <h3>📊 Status breakdown</h3>
       <div class="stack-bar">
-        ${[['for_validation', forValidation.length], ['returned', returned.length], ['pending', pending.length], ['approved', approved.length], ['rejected', rejected.length]]
+        ${[['for_validation', forValidation.length], ['returned', returned.length], ['on_hold', onHold.length], ['pending', pending.length], ['approved', approved.length], ['rejected', rejected.length]]
           .filter(([, n]) => n)
           .map(([s, n]) => `<div class="stack-seg" style="width:${pct(n)}%;background:${STATUS_COLORS[s]};" title="${DOC_STATUS[s].label}: ${n}"></div>`).join('')}
       </div>
       <div class="chart-legend">
-        ${[['for_validation', forValidation.length], ['returned', returned.length], ['pending', pending.length], ['approved', approved.length], ['rejected', rejected.length]]
+        ${[['for_validation', forValidation.length], ['returned', returned.length], ['on_hold', onHold.length], ['pending', pending.length], ['approved', approved.length], ['rejected', rejected.length]]
           .map(([s, n]) => `<span><i style="background:${STATUS_COLORS[s]}"></i> ${DOC_STATUS[s].label} <strong>${n}</strong> (${Math.round(pct(n))}%)</span>`).join('')}
       </div>
     </div>
@@ -2102,11 +2353,11 @@ async function renderStaffDashboard() {
         ${titleRows.map(r => `<tr>
           <td><strong>${h(r.label)}</strong></td>
           <td>${r.total}</td>
-          <td>${(r.for_validation || 0) + (r.pending || 0)}</td>
+          <td>${(r.for_validation || 0) + (r.pending || 0) + (r.on_hold || 0)}</td>
           <td>${r.approved || 0}</td>
           <td>${(r.rejected || 0) + (r.returned || 0)}</td>
           <td class="title-mix"><div class="stack-bar sm">
-            ${['for_validation','returned','pending','approved','rejected']
+            ${['for_validation','returned','on_hold','pending','approved','rejected']
               .filter(s => r[s]).map(s => `<div class="stack-seg" style="width:${r[s] / r.total * 100}%;background:${STATUS_COLORS[s]};"></div>`).join('')}
           </div></td>
         </tr>`).join('')}
@@ -2550,6 +2801,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='users'?'active':''}" data-v="users">All Users</div>
         <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">📋 Signing Queue <span id="docsCount"></span></div>
         <div class="tab ${adminView==='validation'?'active':''}" data-v="validation">🛡️ For Validation <span id="valQueueCount"></span></div>
+        <div class="tab ${adminView==='on-hold'?'active':''}" data-v="on-hold">⏸️ On Hold <span id="holdQueueCount"></span></div>
         <div class="tab ${adminView==='announcements'?'active':''}" data-v="announcements">📢 Announcements</div>
         <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved Docs</div>
         <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
@@ -2578,6 +2830,8 @@ async function updateAdminCounts() {
   const sc = document.getElementById('storeReqCount'); if (sc) sc.textContent = sr ? `(${sr})` : '';
   const { count: fv } = await sb.from('pgds_documents').select('*', { count: 'exact', head: true }).eq('status', 'for_validation');
   const vc = document.getElementById('valQueueCount'); if (vc) vc.textContent = fv ? `(${fv})` : '';
+  const { count: oh } = await sb.from('pgds_documents').select('*', { count: 'exact', head: true }).eq('status', 'on_hold');
+  const hc = document.getElementById('holdQueueCount'); if (hc) hc.textContent = oh ? `(${oh})` : '';
   centerActiveTabs();
 }
 
@@ -2590,6 +2844,7 @@ async function renderAdminView() {
   if (adminView === 'approved-folders') return renderApprovedFolders(el);
   if (adminView === 'rejected') return renderRejected(el);
   if (adminView === 'validation') return renderAdminValidationQueue(el);
+  if (adminView === 'on-hold') return renderAdminHoldQueue(el);
   if (adminView === 'announcements') return annOpenPostId ? renderPostThread(el, annOpenPostId) : renderAnnouncements(el);
   if (adminView === 'store-requests') return renderStoreRequests(el);
   if (adminView === 'stores') return renderStores(el);
@@ -2791,6 +3046,7 @@ async function renderPendingQueue(el) {
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
   window.__pgdsDocsCache = data;
   if (!data.length) return el.innerHTML = `<p class="empty">📭 No pending documents. All caught up!</p>`;
+  await loadNotes(data.map(d => d.id));
   const uids = [...new Set(data.map(d => d.uploader_id))];
   const profMap = {};
   if (uids.length) {
@@ -2806,12 +3062,53 @@ async function renderPendingQueue(el) {
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
       <td>${stampsHTML(d)}</td>
       <td>${ageBadge(age)}</td>
-      <td class="remarks-cell">${renderRemarksCell(d)}</td>
+      <td class="remarks-cell">${threadHTML(d.id, { empty: '' })}${renderRemarksCell(d)}</td>
       <td class="actions">
         <button onclick="signDoc('${d.id}')">✍️ View & Sign</button>
+        <button class="secondary" onclick="openHoldDialog('${d.id}')" title="Ask the store and Area Manager to justify this">⏸️ Hold</button>
         <button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>
       </td>
     </tr>`; }).join('')}</tbody></table>`;
+}
+
+// The signer's own On Hold list: what was parked, who has explained it so far
+async function renderAdminHoldQueue(el) {
+  el.innerHTML = '<p class="empty">Loading...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*')
+    .eq('status', 'on_hold').order('held_at', { ascending: true });
+  if (error) {
+    if (/hold_reason|on_hold/.test(error.message || '')) return el.innerHTML = `<div class="msg error">Run sql/phase15_hold_notes.sql in Supabase first.</div>`;
+    return el.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  }
+  const list = data || [];
+  window.__pgdsDocsCache = list;
+  await loadNotes(list.map(d => d.id));
+  el.innerHTML = `
+    <div class="privacy-note">
+      <span class="privacy-icon">⏸️</span>
+      <div><strong>Documents you parked for justification.</strong> The store and the Area Manager can both reply here, and every explanation shows who wrote it. The Area Manager presses Re-Validate when it is settled, which puts the document back in your Signing Queue - or you can release the hold yourself.</div>
+    </div>
+    ${list.length ? `<table><thead><tr>
+      <th>Document</th><th>Store</th><th>Uploaded by</th><th>On hold since</th><th>Why you held it</th><th>Explanations received</th><th>Actions</th>
+    </tr></thead><tbody>
+      ${list.map(d => {
+        const replies = (noteCache[d.id] || []).filter(n => n.kind !== 'hold');
+        return `<tr>
+        <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${h(d.notes)}</div>` : ''}
+          <div style="margin-top:4px;">${categoryChip(d.doc_category)}</div></td>
+        <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
+        <td>${h(d.uploader_name || '-')}</td>
+        <td>${d.held_at ? fmtDateTime(d.held_at) : '-'}<div style="margin-top:4px;">${ageBadge(ageHours(d.held_at || d.created_at))}</div></td>
+        <td style="max-width:240px;"><div class="hold-why">${h(d.hold_reason || '-')}</div></td>
+        <td style="min-width:240px;">${replies.length ? threadHTML(d.id, { kinds: ['explanation','validation'] }) : '<p class="thread-empty">Nobody has explained yet.</p>'}
+          <button class="secondary" style="margin-top:8px;" onclick="openNoteDialog('${d.id}','explanation','Add a note','Ask a follow-up question or record your own note. Everyone who can see this document will read it.','e.g. Still unclear why this supplier was chosen.')">💬 Reply</button></td>
+        <td class="actions">
+          ${d.original_file_path ? `<button class="secondary" onclick="viewAdminDoc('${d.signed_file_path ? 'pgds-signed' : 'pgds-pending'}','${d.signed_file_path || d.original_file_path}')">👁️ View</button>` : ''}
+          <button onclick="releaseHold('${d.id}')" title="Put it back in your signing queue now">▶️ Release hold</button>
+          <button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>
+        </td>
+      </tr>`; }).join('')}
+    </tbody></table>` : '<p class="empty">👍 Nothing is on hold.</p>'}`;
 }
 
 // Signer's read-only view of what staff have filed but Area Managers have not validated yet
@@ -2824,6 +3121,7 @@ async function renderAdminValidationQueue(el) {
   if (error) return el.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
   const list = data || [];
   window.__pgdsDocsCache = list;
+  await loadNotes(list.map(d => d.id));
   // Which Area Manager covers each store?
   const { data: ams } = await sb.from('pgds_profiles').select('id, full_name, email').eq('position', 'area_manager').eq('status', 'approved');
   const amById = {}; (ams || []).forEach(a => { amById[a.id] = a.full_name || a.email; });
@@ -2859,7 +3157,7 @@ async function renderAdminValidationQueue(el) {
         <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
         <td>${fmtDateTime(d.created_at)}</td>
         <td>${ageBadge(ageHours(d.created_at))}</td>
-        <td class="remarks-cell">${renderRemarksCell(d)}</td>
+        <td class="remarks-cell">${threadHTML(d.id, { empty: '' })}${renderRemarksCell(d)}</td>
         <td class="actions"><button class="secondary" onclick="viewAdminDoc('pgds-pending','${d.original_file_path}')">👁️ View</button></td>
       </tr>`; }).join('')}
     </tbody></table>` : '<p class="empty">📭 Nothing waiting for validation.</p>'}`;
@@ -4528,11 +4826,13 @@ async function liveCheck() {
 function liveRefreshView() {
   if (currentUser.role === 'admin') {
     updateAdminCounts();
-    if (document.getElementById('content') && ['dashboard','documents','validation','approved-folders','rejected'].includes(adminView)) renderAdminView();
+    if (document.getElementById('content') && ['dashboard','documents','validation','on-hold','approved-folders','rejected'].includes(adminView)) renderAdminView();
   } else {
     updateValidationCount();
+    updateHoldCount();
     if (!document.getElementById('staffPane')) return;
     if (staffView === 'status') { loadMyDocs(); updateStatusCounts(); }
+    else if (staffView === 'hold') renderHoldPane();
     else if (staffView === 'validate') renderValidationPane();
     else if (staffView === 'dashboard') renderStaffDashboard();
   }
