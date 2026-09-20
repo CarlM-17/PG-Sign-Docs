@@ -521,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v18.1-evidence';
+const APP_VERSION = 'v18.2-savefix';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1410,40 +1410,70 @@ function openNoteDialog(docId, kind, title, hint, placeholder) {
     <textarea id="noteText" style="min-height:120px;font-size:14px;" placeholder="${h(placeholder)}"></textarea>
     <p style="font-size:12px;color:var(--muted);margin:8px 0 4px;">Attach supporting documents or evidence if you have any - photos or PDFs, up to ${MAX_ATTACH_MB}MB each.</p>
     ${attachPickerHTML('noteFiles')}
+    <div id="noteMsg"></div>
     <div style="display:flex;gap:8px;margin-top:10px;">
-      <button onclick="saveNote('${docId}','${kind}')">💾 Save</button>
+      <button id="noteSaveBtn" onclick="saveNote('${docId}','${kind}')">💾 Save</button>
       <button class="secondary" onclick="closePopover()">Cancel</button>
     </div>`;
   document.body.appendChild(back); document.body.appendChild(pop);
   setTimeout(() => { const t = document.getElementById('noteText'); if (t) t.focus(); }, 50);
 }
 
+function noteMsg(text, type) {
+  const el = document.getElementById('noteMsg');
+  if (el) el.innerHTML = text ? `<div class="msg ${type || 'error'}" style="margin-top:10px;font-size:12px;">${text}</div>` : '';
+}
+
 async function saveNote(docId, kind) {
   const text = (document.getElementById('noteText').value || '').trim();
-  if (!text) return toast('Type something first.', 'warn');
+  if (!text) return noteMsg('Type your explanation first.', 'warn');
   const picker = document.getElementById('noteFiles');
-  const btn = document.querySelector('.popover button');
-  if (btn) btn.disabled = true;
+  const btn = document.getElementById('noteSaveBtn');
+  const done = () => { if (btn) { btn.disabled = false; btn.textContent = '💾 Save'; } };
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  noteMsg('');
+
   let attachments = [];
-  if (picker && picker.files && picker.files.length) {
-    toast('Uploading attachment(s)...');
-    attachments = await uploadAttachments(picker.files);
-  }
-  const { data, error } = await sb.from('pgds_doc_notes').insert({
-    doc_id: docId, author_id: currentUser.id, author_name: niceName(),
-    author_position: currentUser.role === 'admin' ? 'regional_manager' : myPosition(),
-    kind, body: text, attachments
-  }).select('*').single();
-  if (error) {
-    if (btn) btn.disabled = false;
-    // Do not leave orphan files behind if the remark itself could not be saved
+  try {
+    if (picker && picker.files && picker.files.length) {
+      if (btn) btn.textContent = 'Uploading...';
+      attachments = await uploadAttachments(picker.files);
+      if (!attachments.length) {
+        done();
+        return noteMsg('The file could not be uploaded, so nothing was saved. Check the size (max ' + MAX_ATTACH_MB + 'MB) and that it is a photo or a PDF.', 'error');
+      }
+    }
+
+    const row = {
+      doc_id: docId, author_id: currentUser.id, author_name: niceName(),
+      author_position: currentUser.role === 'admin' ? 'regional_manager' : myPosition(),
+      kind, body: text
+    };
+    let { data, error } = await sb.from('pgds_doc_notes').insert({ ...row, attachments }).select('*').single();
+
+    // The attachments column arrived in a later version of phase15. If the database
+    // has not been updated yet, still save the words rather than losing them.
+    if (error && /attachments/i.test(error.message || '')) {
+      removeAttachmentFiles(attachments);
+      const retry = await sb.from('pgds_doc_notes').insert(row).select('*').single();
+      if (retry.error) { done(); return noteMsg(h(retry.error.message), 'error'); }
+      data = { ...retry.data, attachments: [] };
+      toast('Saved, but the attachment needs the database update (phase15).', 'warn');
+    } else if (error) {
+      done();
+      removeAttachmentFiles(attachments);
+      return noteMsg(h(error.message), 'error');
+    }
+
+    (noteCache[docId] = noteCache[docId] || []).push(data);
+    closePopover();
+    toast('✓ Remark added');
+    refreshCurrentPane();
+  } catch (err) {
+    done();
     removeAttachmentFiles(attachments);
-    return toast(error.message, 'error');
+    noteMsg(h(err.message || String(err)), 'error');
   }
-  (noteCache[docId] = noteCache[docId] || []).push(data);
-  closePopover();
-  toast('✓ Remark added');
-  refreshCurrentPane();
 }
 
 async function deleteNote(noteId, docId) {
