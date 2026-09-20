@@ -85,6 +85,8 @@
   .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin-bottom: 16px; overflow-x: auto; background: #fff; border-radius: 10px 10px 0 0; padding: 0 8px; }
   .tab { padding: 12px 18px; cursor: pointer; border-bottom: 3px solid transparent; font-size: 14px; color: var(--muted); white-space: nowrap; font-weight: 500; margin-bottom: -2px; }
   .tab.active { color: var(--green-700); border-color: var(--green-700); font-weight: 700; }
+  .tab-count { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .tab.active .tab-count { color: var(--green-700); }
   .tab:hover:not(.active) { color: var(--green-900); background: var(--green-50); }
   /* Table with horizontal scroll wrapper */
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border-radius: 10px; box-shadow: 0 2px 8px rgba(6,78,59,0.05); margin-bottom: 12px; background: var(--card); }
@@ -464,7 +466,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v14.3-deluser';
+const APP_VERSION = 'v15.1-tabcounts';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1370,7 +1372,7 @@ function staffTabsHTML() {
   const main = isAreaManager()
     ? t('validate', '🛡️ For Validation <span id="valCount"></span>')
     : t('upload', '➕ Add Docs for Signing');
-  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${main}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
+  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${main}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Store Ops Guide')}</div>`;
 }
 
 // ---------- TO-DO (private per staff) ----------
@@ -1732,25 +1734,52 @@ async function deleteNote(id) {
 function guideHTML() {
   const rules = [
     { n: 1, icon: '✍️', title: 'Complete the signatories first',
-      body: 'All documents must already carry the required handwritten signatures - Store Manager, Area Manager, and any other concerned personnel - <strong>before</strong> you upload them here. Skip this only when the document genuinely does not require those signatures.' },
+      body: 'Documents must already carry the required handwritten signatures - Store Manager, Area Manager, and any other concerned personnel - <strong>before</strong> you upload them. Skip this only when the document genuinely does not require those signatures.' },
     { n: 2, icon: '📑', title: 'One document title per upload',
-      body: 'Do not mix different document types in a single submission. Every file in one upload must belong to the <strong>same document title or category</strong>. Mixed submissions may be rejected.' },
-    { n: 3, icon: '🔍', title: 'Upload clear, readable copies',
-      body: 'Photos and scans must be sharp, well lit, properly aligned, and complete. <strong>Blurry, dark, cropped, or unreadable</strong> files may be rejected.' },
-    { n: 4, icon: '📱', title: 'Phone or computer both work',
-      body: 'You can use this app on a mobile phone or on a PC. All that is required is a <strong>stable internet connection</strong>. On a phone you may upload from your gallery or take a photo directly.' },
-    { n: 5, icon: '🚦', title: 'Use the urgency level honestly',
-      body: 'Choose the urgency that truly matches the document. Reserve <strong>Urgent</strong> and <strong>High</strong> for items that genuinely need immediate attention.' },
-    { n: 6, icon: '🗓️', title: 'Respect the signing schedule',
-      body: 'Documents are reviewed and signed on an organized schedule so signing time is used efficiently. Honest use of the urgency option ensures that genuinely urgent documents get prioritized.' },
+      body: 'Do not mix different document types in a single submission. Every file in one upload must belong to the <strong>same document title</strong>. Multiple pages or photos of that same document are merged into one file automatically.' },
+    { n: 3, icon: '🗂️', title: 'Pick the correct document type',
+      body: 'Admin Staff file <strong>Admin Docs</strong>; Store Managers and Store Officers file <strong>Store Ops Docs</strong>. The app sets this from your position - change it only when a document genuinely belongs to the other folder, because it decides which folder it is filed in.' },
+    { n: 4, icon: '🔍', title: 'Upload clear, readable copies',
+      body: 'Photos and scans must be sharp, well lit, properly aligned, and complete. <strong>Blurry, dark, cropped, or unreadable</strong> files will be sent back.' },
+    { n: 5, icon: '📝', title: 'Always write the notes',
+      body: 'Notes are <strong>required</strong>. Briefly explain what the document is and why it needs to be signed, so the Area Manager and the signer can review it without asking you.' },
+    { n: 6, icon: '🚦', title: 'Use the urgency level honestly',
+      body: 'Choose the urgency that truly matches the document. Reserve <strong>Urgent</strong> and <strong>High</strong> for items that genuinely need immediate attention - marking everything urgent helps no one.' },
+    { n: 7, icon: '📱', title: 'Phone or computer both work',
+      body: 'Use the app on a mobile phone or a PC. All that is required is a <strong>stable internet connection</strong>. On a phone you may upload from your gallery or take a photo directly.' },
+    { n: 8, icon: '🗓️', title: 'Respect the signing schedule',
+      body: 'Documents are validated and signed on an organized schedule. Honest use of the urgency option ensures genuinely urgent documents are prioritized.' },
   ];
   return `
     <div class="guide-hero">
       <img src="/SignDocs_icon.png" alt="">
       <div>
-        <h2>Admin Staff Guide</h2>
-        <p>Document uploading standards - please read before submitting</p>
+        <h2>Admin Staff Store Ops Guide</h2>
+        <p>Filing, validation and signing - please read before submitting</p>
       </div>
+    </div>
+
+    <div class="guide-steps">
+      <h4>🔄 How a document travels</h4>
+      <ol>
+        <li><strong>You upload it.</strong> It is filed under your store, as Admin Docs or Store Ops Docs, and its status becomes <strong>For validation</strong>.</li>
+        <li><strong>Your Area Manager reviews it.</strong> They check it is complete and correct. They do not sign in the app - the physical document is still signed as usual.</li>
+        <li><strong>If something is missing</strong> they send it back with a reason. The status becomes <strong>Returned</strong>, it appears on your Documents Status tab, you fix it and tap <strong>Resubmit</strong>.</li>
+        <li><strong>Once validated</strong> it moves to the Regional Manager as <strong>For signature</strong>. Nothing reaches the signer unvalidated.</li>
+        <li><strong>After signing</strong> the status becomes <strong>Approved</strong> and you can download the signed copy.</li>
+      </ol>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;">Every document carries three stamps - <strong>uploaded</strong>, <strong>validated</strong>, and <strong>signed</strong> - each with the date, time and the name of the person.</p>
+    </div>
+
+    <div class="guide-steps">
+      <h4>👥 Positions and what each one does</h4>
+      <ol>
+        <li><span class="pos-chip admin_staff">Admin Staff</span> File <strong>Admin Docs</strong> for their store, and follow their status. They see the Admin Docs of their store.</li>
+        <li><span class="pos-chip store_officer">Store Manager / Store Officer</span> File <strong>Store Ops Docs</strong> for their store. They see <strong>both</strong> Admin Docs and Store Ops Docs of their store.</li>
+        <li><span class="pos-chip area_manager">Area Manager</span> <strong>Validate</strong> every document from the stores under them before it goes for signing, or send it back with a reason. They do not upload or sign in the app.</li>
+        <li><span class="pos-chip regional_manager">Regional Manager</span> Signs the validated documents digitally and returns them, or rejects one with a reason.</li>
+      </ol>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;">You choose your position when you sign up, together with your store or stores. The Regional Manager approves every new account before it can be used.</p>
     </div>
 
     <div class="guide-grid">
@@ -1771,19 +1800,21 @@ function guideHTML() {
         <ul>
           <li>Signed by all required personnel</li>
           <li>One document title per upload</li>
-          <li>Sharp, bright, fully visible page</li>
-          <li>Whole document in frame, edges included</li>
+          <li>Correct type: Admin Docs or Store Ops Docs</li>
+          <li>Sharp, bright, fully visible pages</li>
+          <li>Notes explain what it is and why</li>
           <li>Urgency matches the real need</li>
         </ul>
       </div>
       <div class="guide-bad">
-        <h4>❌ Likely rejected</h4>
+        <h4>❌ Sent back or rejected</h4>
         <ul>
           <li>Missing Store or Area Manager signature</li>
-          <li>Several different document types mixed together</li>
-          <li>Blurry, dark, or glare-covered photo</li>
+          <li>Different document types mixed together</li>
+          <li>Filed under the wrong type</li>
+          <li>Blurry, dark, or glare-covered photos</li>
           <li>Corners or lines cut off</li>
-          <li>Everything marked Urgent</li>
+          <li>Empty or meaningless notes</li>
         </ul>
       </div>
     </div>
@@ -1791,46 +1822,50 @@ function guideHTML() {
     <div class="guide-steps">
       <h4>📤 How to upload</h4>
       <ol>
-        <li><strong>Collect the signed document</strong> - make sure every required signature is already on paper.</li>
-        <li><strong>Give it a clear title</strong> - e.g. "RFP - Danlhey Paint Center - Sept 2026".</li>
+        <li><strong>Collect the signed document</strong> - every required signature already on paper.</li>
+        <li>Open <strong>Add Docs for Signing</strong> and pick the <strong>store</strong> it belongs to, if you handle more than one.</li>
+        <li>Check the <strong>document type</strong> - Admin Docs or Store Ops Docs.</li>
+        <li><strong>Give it a clear title</strong>, for example "RFP - Danlhey Paint Center - Sept 2026".</li>
         <li><strong>Choose the urgency</strong> that honestly reflects the deadline.</li>
-        <li><strong>Add the files</strong> - tap <em>Choose files</em> to pick from your device, or <em>Take photo</em> to capture pages with your camera. Multiple pages of the <em>same</em> document are merged into one file automatically.</li>
-        <li><strong>Write the notes</strong> - this is required. Briefly explain what the document is and why it needs to be signed.</li>
-        <li><strong>Tap Upload for signature</strong> and watch the status on your dashboard.</li>
-      </ol>
-    </div>
-
-    <div class="guide-steps">
-      <h4>👥 Positions and how a document travels</h4>
-      <ol>
-        <li><strong>Admin Staff</strong> upload <strong>Admin Docs</strong>. <strong>Store Managers / Store Officers</strong> upload <strong>Store Ops Docs</strong> and can also open the Admin Docs of their store.</li>
-        <li><strong>Area Managers</strong> do not sign in the app. They <strong>validate</strong> first: every uploaded document waits under <em>For Validation</em> until the Area Manager of that store confirms it.</li>
-        <li>Once validated, the document moves to the <strong>Regional Manager</strong> for the digital signature. Nothing reaches the signer unvalidated.</li>
-        <li>If something is missing, the Area Manager <strong>sends it back</strong> with a reason. It appears under <em>Returned</em> - fix it, then tap <strong>Resubmit</strong>.</li>
-        <li>Every document carries three stamps: <strong>uploaded</strong>, <strong>validated</strong>, and <strong>signed</strong>, each with date and time.</li>
-      </ol>
-    </div>
-
-    <div class="guide-steps">
-      <h4>🏪 Handling more than one store</h4>
-      <ol>
-        <li>At signup, <strong>tick every store you handle</strong> - you can select more than one.</li>
-        <li>Once approved, a <strong>"Which store is this document for?"</strong> dropdown appears above the document title. Pick the correct store for every upload.</li>
-        <li>Opened a new branch, or missed a store at signup? Use <strong>My stores → Request additional store</strong> on your dashboard. The signer reviews and approves it - you will see the status right there.</li>
-        <li>If the store you need is not on the list at all, ask the signer to create it first - new stores are added by the admin.</li>
+        <li><strong>Add the files</strong> - tap <em>Choose files</em> for your gallery, or <em>Take photo</em> to capture pages. Multiple pages of the <em>same</em> document are merged into one file.</li>
+        <li><strong>Write the notes</strong> - required.</li>
+        <li>Tap <strong>Upload for signature</strong>, then follow it on <strong>Documents Status</strong>.</li>
       </ol>
     </div>
 
     <div class="guide-status">
       <h4>📊 What the statuses mean</h4>
-      <div class="guide-status-row"><span class="badge pending">Pending</span><span>Waiting in the signer's queue. You may still cancel it.</span></div>
-      <div class="guide-status-row"><span class="badge approved">Approved</span><span>Signed and finalized. Tap Download to get the signed copy.</span></div>
-      <div class="guide-status-row"><span class="badge rejected">Rejected</span><span>Returned with a reason. Fix the issue and upload again.</span></div>
-      <div class="guide-status-row"><span style="font-size:18px;">📣</span><span>A gold note on your document is a <strong>message from the signer</strong> - usually a missing requirement. Read it and act on it.</span></div>
+      <div class="guide-status-row"><span class="badge pending">For validation</span><span>With your Area Manager. You may still cancel it.</span></div>
+      <div class="guide-status-row"><span class="badge high">Returned</span><span>Sent back by the Area Manager, with the reason shown on the document. Fix it, then tap <strong>Resubmit</strong>.</span></div>
+      <div class="guide-status-row"><span class="badge normal">For signature</span><span>Validated and waiting in the Regional Manager's queue.</span></div>
+      <div class="guide-status-row"><span class="badge approved">Approved</span><span>Signed and finalized. Tap <strong>Download</strong> for the signed copy.</span></div>
+      <div class="guide-status-row"><span class="badge rejected">Rejected</span><span>Rejected by the signer, with a reason. Correct it and upload again.</span></div>
+      <div class="guide-status-row"><span style="font-size:18px;">📣</span><span>A gold note on a document is a <strong>message from the signer</strong> - usually a missing requirement. Read it and act on it.</span></div>
+    </div>
+
+    <div class="guide-steps">
+      <h4>🏪 Handling more than one store</h4>
+      <ol>
+        <li>At signup, <strong>tick every store you handle</strong>. Area Managers tick the stores under them.</li>
+        <li>Once approved, a <strong>"Which store is this document for?"</strong> dropdown appears above the document title. Pick the correct store for every upload.</li>
+        <li>Opened a new branch, or missed a store at signup? Use <strong>My stores → Request additional store</strong>. The signer reviews and approves it, and you can follow the request right there.</li>
+        <li>If the store is not on the list at all, ask the signer to create it first - new stores are added by the admin.</li>
+      </ol>
+    </div>
+
+    <div class="guide-steps">
+      <h4>🧭 Your tabs</h4>
+      <ol>
+        <li><strong>📊 Dashboard</strong> - totals for your store at every stage, plus a summary by document title.</li>
+        <li><strong>➕ Add Docs for Signing</strong> - your stores and the upload form. Area Managers see <strong>🛡️ For Validation</strong> here instead.</li>
+        <li><strong>📄 Documents Status</strong> - every document for your store, filtered by stage.</li>
+        <li><strong>📢 Messages</strong> - announcements, reminders and FYIs from the signer. Reply, attach photos, and tap <strong>Got it</strong> when asked.</li>
+        <li><strong>✅ To-Do</strong> and <strong>📝 Notes</strong> - private to you. Nobody else can read them, not even the signer.</li>
+      </ol>
     </div>
 
     <div class="guide-footer">
-      Before submitting, please review your documents carefully to avoid rejection and unnecessary delays.
+      Before submitting, please review your documents carefully to avoid delays, sending back, or rejection.
     </div>
 
     <div class="guide-credit">
@@ -1902,7 +1937,7 @@ async function renderStaff() {
   setTimeout(updateValidationCount, 0);
   if (staffView === 'upload' && isAreaManager()) staffView = 'validate';
   if (staffView === 'validate' && !isAreaManager()) staffView = 'upload';
-  const titles = { dashboard: 'Dashboard', upload: 'Add Docs for Signing', validate: 'For Validation', status: 'Documents Status', messages: 'Messages', todo: 'To-Do', notes: 'Notes', guide: 'Admin Staff Guide' };
+  const titles = { dashboard: 'Dashboard', upload: 'Add Docs for Signing', validate: 'For Validation', status: 'Documents Status', messages: 'Messages', todo: 'To-Do', notes: 'Notes', guide: 'Admin Staff Store Ops Guide' };
   app.innerHTML = `
     ${headerHTML(titles[staffView] || 'Dashboard')}
     <div class="container">
@@ -2095,11 +2130,23 @@ function renderStatusPane() {
     <p style="font-size:12px;color:var(--muted);margin:-6px 0 10px;">Documents for your store${(currentUser.stores || []).length > 1 ? 's' : ''}, at every stage.</p>
     <div class="tabs">
       ${['for_validation','returned','pending','approved','rejected'].map(s =>
-        `<div class="tab ${staffTab===s?'active':''}" data-t="${s}">${DOC_STATUS[s].label}</div>`).join('')}
+        `<div class="tab ${staffTab===s?'active':''}" data-t="${s}">${DOC_STATUS[s].label} <span class="tab-count" id="cnt-${s}"></span></div>`).join('')}
     </div>
     <div id="docList"></div>`;
   pane.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStatusPane(); });
   loadMyDocs();
+  updateStatusCounts();
+}
+
+// How many documents sit at each stage, for the store(s) this person can see
+async function updateStatusCounts() {
+  const { data } = await sb.from('pgds_documents').select('status');
+  const tally = {};
+  (data || []).forEach(d => { tally[d.status] = (tally[d.status] || 0) + 1; });
+  ['for_validation','returned','pending','approved','rejected'].forEach(s => {
+    const el = document.getElementById('cnt-' + s);
+    if (el) el.textContent = `(${tally[s] || 0})`;
+  });
 }
 
 // Staff: show their own store requests under the assigned chips
@@ -2448,7 +2495,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='store-requests'?'active':''}" data-v="store-requests">🏪 Store Requests <span id="storeReqCount"></span></div>
         <div class="tab ${adminView==='stores'?'active':''}" data-v="stores">Stores</div>
         <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
-        <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Admin Staff Guide</div>
+        <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Admin Staff Store Ops Guide</div>
       </div>
       <div id="msg"></div>
       <div id="content"></div>
@@ -2964,12 +3011,22 @@ async function deleteUser(id, name) {
   if (count) {
     return alert(`Cannot delete ${name}\n\nThis person has ${count} document(s) in the system, and deleting the account would delete those documents too.\n\nUse Reject instead - it blocks the login and keeps every document intact.`);
   }
-  if (!confirm(`Delete ${name}?\n\nThis removes their profile, store assignments, to-dos and notes. It cannot be undone.\n\nNote: their login still exists in Supabase. To block it completely, also delete the user under Authentication in the Supabase dashboard.`)) return;
-  const { data: deleted, error } = await sb.from('pgds_profiles').delete().eq('id', id).select('id');
-  if (error) return toast(error.message, 'error');
-  if (!deleted || !deleted.length) return toast('Nothing was deleted - run the admin delete policy SQL in Supabase.', 'error');
-  toast(`${name} deleted. Remember to remove the login in Supabase → Authentication.`);
-  renderAdminView(); updateAdminCounts();
+  if (!confirm(`Delete ${name}?\n\nThis removes their login and their profile, store assignments, to-dos and notes. The email becomes free to sign up again.\n\nThis cannot be undone.`)) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return toast('Session expired - sign in again.', 'error');
+    const resp = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ userId: id })
+    });
+    const out = await resp.json().catch(() => ({}));
+    if (!resp.ok) return alert(out.error || `Delete failed (${resp.status})`);
+    toast(`${name} deleted, login and all.`);
+    renderAdminView(); updateAdminCounts();
+  } catch (err) {
+    toast('Delete failed: ' + (err.message || err), 'error');
+  }
 }
 
 async function rejectUser(id) {
