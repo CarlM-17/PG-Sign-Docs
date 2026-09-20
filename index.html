@@ -521,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v18.0-onhold';
+const APP_VERSION = 'v18.1-evidence';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1383,6 +1383,11 @@ const NOTE_KIND = { validation: '🛡️ Validation remark', hold: '⏸️ Put o
 function threadHTML(docId, opts = {}) {
   const notes = (noteCache[docId] || []).filter(n => opts.kinds ? opts.kinds.includes(n.kind) : true);
   if (!notes.length) return `<p class="thread-empty">${opts.empty || 'No remarks yet.'}</p>`;
+  // Thumbnails need signed URLs; fetch them once per render, after the HTML lands
+  if (notes.some(n => (n.attachments || []).length)) {
+    clearTimeout(window.__pgdsHydrate);
+    window.__pgdsHydrate = setTimeout(() => hydrateAttachmentThumbs(), 40);
+  }
   return `<div class="thread">${notes.map(n => `
     <div class="note ${n.author_id === currentUser.id ? 'mine' : ''}">
       ${n.author_id === currentUser.id || currentUser.role === 'admin'
@@ -1390,6 +1395,7 @@ function threadHTML(docId, opts = {}) {
       <span class="who">${h(n.author_name || 'Someone')}</span><span class="pos">${h(POSITIONS[n.author_position] ? POSITIONS[n.author_position].short : 'Staff')}</span>
       <span class="when">${fmtDateTime(n.created_at)}</span>
       <div class="body">${h(n.body)}</div>
+      ${attachmentsHTML(n.attachments)}
     </div>`).join('')}</div>`;
 }
 
@@ -1402,6 +1408,8 @@ function openNoteDialog(docId, kind, title, hint, placeholder) {
     <h4>${h(title)}</h4>
     <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${hint}</p>
     <textarea id="noteText" style="min-height:120px;font-size:14px;" placeholder="${h(placeholder)}"></textarea>
+    <p style="font-size:12px;color:var(--muted);margin:8px 0 4px;">Attach supporting documents or evidence if you have any - photos or PDFs, up to ${MAX_ATTACH_MB}MB each.</p>
+    ${attachPickerHTML('noteFiles')}
     <div style="display:flex;gap:8px;margin-top:10px;">
       <button onclick="saveNote('${docId}','${kind}')">💾 Save</button>
       <button class="secondary" onclick="closePopover()">Cancel</button>
@@ -1413,12 +1421,25 @@ function openNoteDialog(docId, kind, title, hint, placeholder) {
 async function saveNote(docId, kind) {
   const text = (document.getElementById('noteText').value || '').trim();
   if (!text) return toast('Type something first.', 'warn');
+  const picker = document.getElementById('noteFiles');
+  const btn = document.querySelector('.popover button');
+  if (btn) btn.disabled = true;
+  let attachments = [];
+  if (picker && picker.files && picker.files.length) {
+    toast('Uploading attachment(s)...');
+    attachments = await uploadAttachments(picker.files);
+  }
   const { data, error } = await sb.from('pgds_doc_notes').insert({
     doc_id: docId, author_id: currentUser.id, author_name: niceName(),
     author_position: currentUser.role === 'admin' ? 'regional_manager' : myPosition(),
-    kind, body: text
+    kind, body: text, attachments
   }).select('*').single();
-  if (error) return toast(error.message, 'error');
+  if (error) {
+    if (btn) btn.disabled = false;
+    // Do not leave orphan files behind if the remark itself could not be saved
+    removeAttachmentFiles(attachments);
+    return toast(error.message, 'error');
+  }
   (noteCache[docId] = noteCache[docId] || []).push(data);
   closePopover();
   toast('✓ Remark added');
@@ -1427,9 +1448,11 @@ async function saveNote(docId, kind) {
 
 async function deleteNote(noteId, docId) {
   if (!confirm('Delete this remark?')) return;
+  const doomed = (noteCache[docId] || []).find(n => n.id === noteId);
   const { data, error } = await sb.from('pgds_doc_notes').delete().eq('id', noteId).select('id');
   if (error) return toast(error.message, 'error');
   if (!data || !data.length) return toast('Could not delete - that remark is not yours.', 'error');
+  if (doomed) removeAttachmentFiles(doomed.attachments);
   noteCache[docId] = (noteCache[docId] || []).filter(n => n.id !== noteId);
   toast('Remark deleted');
   refreshCurrentPane();
@@ -1465,7 +1488,7 @@ async function renderHoldPane() {
       <span style="font-size:22px;">⏸️</span>
       <div class="txt">
         <strong>The signer needs more information before signing these.</strong>
-        Add your explanation or justification below - it is shown to the Regional Manager with your name and position.
+        The <strong>Store Manager</strong>, the <strong>Staff</strong> who filed it and the <strong>Area Manager</strong> can each add an explanation or justification below, and attach supporting documents or evidence. Everything is shown to the Regional Manager with your name and position.
         ${amCan
           ? 'Once the explanation is complete, press <strong>Re-Validate</strong> to send the document back to the signing queue.'
           : 'Your Area Manager re-validates it once the explanation is complete.'}
@@ -2069,8 +2092,8 @@ function guideHTML() {
       <h4>⏸️ On Hold - when the signer asks for a justification</h4>
       <ol>
         <li><strong>Why it happens.</strong> If a document arrives without a clear justification - a purchase that was never discussed, a repair with no explanation - the Regional Manager puts it <strong>On Hold</strong> instead of rejecting it. A reason is required, so you always know what is being asked.</li>
-        <li><strong>Who sees it.</strong> It appears on the <strong>On Hold</strong> tab for the uploader, the Store Manager / Officer and the Area Manager of that store, all at once.</li>
-        <li><strong>Everyone can answer.</strong> Anyone who can see it may add an explanation or justification. Each entry is stamped with the <strong>name and position</strong> of whoever wrote it, so the signer knows exactly who said what.</li>
+        <li><strong>Who sees it.</strong> It appears on the <strong>On Hold</strong> tab for the <strong>Store Manager and Staff</strong> of that store and for their <strong>Area Manager</strong>, all at once.</li>
+        <li><strong>Everyone can answer.</strong> The Store Manager, the Staff who filed it and the Area Manager can each add an explanation or justification, and attach <strong>supporting documents or evidence</strong> - a photo, a quotation, an approval. Each entry is stamped with the <strong>name and position</strong> of whoever wrote it, so the signer knows exactly who said what.</li>
         <li><strong>The Area Manager closes it.</strong> Once the explanation is complete, the Area Manager presses <strong>Re-Validate</strong> and the document goes back into the signing queue. Nobody else can move it out of hold.</li>
         <li><strong>Nothing is lost.</strong> The document is not rejected and does not go back to the uploader - it simply waits, with the whole conversation attached to it.</li>
       </ol>
@@ -3086,7 +3109,7 @@ async function renderAdminHoldQueue(el) {
   el.innerHTML = `
     <div class="privacy-note">
       <span class="privacy-icon">⏸️</span>
-      <div><strong>Documents you parked for justification.</strong> The store and the Area Manager can both reply here, and every explanation shows who wrote it. The Area Manager presses Re-Validate when it is settled, which puts the document back in your Signing Queue - or you can release the hold yourself.</div>
+      <div><strong>Documents you parked for justification.</strong> The Store Manager, the Staff who filed it and the Area Manager can all reply here, with supporting documents if they have any, and every explanation shows who wrote it. The Area Manager presses Re-Validate when it is settled, which puts the document back in your Signing Queue - or you can release the hold yourself.</div>
     </div>
     ${list.length ? `<table><thead><tr>
       <th>Document</th><th>Store</th><th>Uploaded by</th><th>On hold since</th><th>Why you held it</th><th>Explanations received</th><th>Actions</th>
