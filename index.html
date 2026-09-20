@@ -521,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v18.2-savefix';
+const APP_VERSION = 'v18.3-notefix';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1449,31 +1449,63 @@ async function saveNote(docId, kind) {
       author_position: currentUser.role === 'admin' ? 'regional_manager' : myPosition(),
       kind, body: text
     };
-    let { data, error } = await sb.from('pgds_doc_notes').insert({ ...row, attachments }).select('*').single();
 
-    // The attachments column arrived in a later version of phase15. If the database
-    // has not been updated yet, still save the words rather than losing them.
+    // Insert WITHOUT "returning". A returning clause has to pass the read policy as
+    // well as the insert policy, and that second check has bitten this app before.
+    let { error } = await sb.from('pgds_doc_notes').insert({ ...row, attachments });
+
+    // Older databases have no attachments column - save the words rather than lose them.
     if (error && /attachments/i.test(error.message || '')) {
       removeAttachmentFiles(attachments);
-      const retry = await sb.from('pgds_doc_notes').insert(row).select('*').single();
-      if (retry.error) { done(); return noteMsg(h(retry.error.message), 'error'); }
-      data = { ...retry.data, attachments: [] };
-      toast('Saved, but the attachment needs the database update (phase15).', 'warn');
-    } else if (error) {
-      done();
-      removeAttachmentFiles(attachments);
-      return noteMsg(h(error.message), 'error');
+      attachments = [];
+      const retry = await sb.from('pgds_doc_notes').insert(row);
+      error = retry.error;
+      if (!error) toast('Saved, but the attachment needs the database update (phase15).', 'warn');
     }
 
-    (noteCache[docId] = noteCache[docId] || []).push(data);
+    if (error) {
+      done();
+      removeAttachmentFiles(attachments);
+      console.error('pgds_doc_notes insert failed:', error);
+      return noteMsg(describeDbError(error), 'error');
+    }
+
+    // Read the thread back so we show exactly what the database now holds
+    await loadNotes([docId]);
+    const saved = (noteCache[docId] || []).some(n => n.body === text && n.author_id === currentUser.id);
     closePopover();
-    toast('✓ Remark added');
+    if (saved) {
+      toast('✓ Remark added');
+    } else {
+      // Saved, but the read policy will not give it back - say so plainly
+      toast('Saved, but it cannot be read back. Re-run phase15 in Supabase.', 'warn');
+    }
     refreshCurrentPane();
   } catch (err) {
     done();
     removeAttachmentFiles(attachments);
-    noteMsg(h(err.message || String(err)), 'error');
+    console.error('saveNote failed:', err);
+    noteMsg(describeDbError(err), 'error');
   }
+}
+
+// Supabase errors sometimes carry an empty message but a useful code/details/hint.
+// Never show an empty red box - always say something the user can act on or send on.
+function describeDbError(e) {
+  if (!e) return 'Unknown error.';
+  const bits = [e.message, e.details, e.hint].filter(Boolean).map(t => h(String(t)));
+  const code = e.code ? `<code>${h(String(e.code))}</code>` : '';
+  let advice = '';
+  const all = ((e.message || '') + ' ' + (e.details || '') + ' ' + (e.code || '')).toLowerCase();
+  if (all.includes('row-level security') || e.code === '42501') {
+    advice = '<br><strong>Fix:</strong> run <code>sql/phase15_hold_notes.sql</code> in Supabase - the remark policies are missing.';
+  } else if (all.includes('does not exist') || e.code === '42p01' || e.code === 'pgrst205') {
+    advice = '<br><strong>Fix:</strong> run <code>sql/phase15_hold_notes.sql</code> in Supabase - the remarks table is missing.';
+  } else if (all.includes('permission denied')) {
+    advice = '<br><strong>Fix:</strong> run <code>sql/phase15_hold_notes.sql</code> in Supabase - the table exists but is not granted to app users.';
+  }
+  return (bits.length ? bits.join(' - ') : 'The database refused the save without giving a reason.')
+       + (code ? ' ' + code : '') + advice;
 }
 
 async function deleteNote(noteId, docId) {
