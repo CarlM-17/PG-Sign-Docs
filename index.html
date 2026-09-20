@@ -464,7 +464,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v14.2-space';
+const APP_VERSION = 'v14.3-deluser';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2662,6 +2662,7 @@ async function renderAllUsers(el) {
         ${u.role!=='admin'?`<button class="secondary" onclick="openStoreAssign('${u.id}')">✏️ Stores</button>`:''}
         ${u.status!=='approved'?`<button onclick="approveUser('${u.id}')">Approve</button>`:''}
         ${u.status!=='rejected'&&u.id!==currentUser.id?`<button class="danger" onclick="rejectUser('${u.id}')">Reject</button>`:''}
+        ${u.role!=='admin'&&u.id!==currentUser.id?`<button class="danger" onclick="deleteUser('${u.id}','${h(u.full_name||u.email).replace(/'/g,"\\'")}')">🗑 Delete</button>`:''}
       </td>
     </tr>`).join('')}</tbody></table>`;
 }
@@ -2951,6 +2952,23 @@ async function approveUser(id) {
   }).eq('id', id);
   if (error) return toast(error.message, 'error');
   toast('✓ User approved');
+  renderAdminView(); updateAdminCounts();
+}
+
+// Permanently remove a user account. Refused while they still have documents,
+// because deleting the profile would take their documents with it.
+async function deleteUser(id, name) {
+  const { count, error: cErr } = await sb.from('pgds_documents')
+    .select('*', { count: 'exact', head: true }).eq('uploader_id', id);
+  if (cErr) return toast(cErr.message, 'error');
+  if (count) {
+    return alert(`Cannot delete ${name}\n\nThis person has ${count} document(s) in the system, and deleting the account would delete those documents too.\n\nUse Reject instead - it blocks the login and keeps every document intact.`);
+  }
+  if (!confirm(`Delete ${name}?\n\nThis removes their profile, store assignments, to-dos and notes. It cannot be undone.\n\nNote: their login still exists in Supabase. To block it completely, also delete the user under Authentication in the Supabase dashboard.`)) return;
+  const { data: deleted, error } = await sb.from('pgds_profiles').delete().eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!deleted || !deleted.length) return toast('Nothing was deleted - run the admin delete policy SQL in Supabase.', 'error');
+  toast(`${name} deleted. Remember to remove the login in Supabase → Authentication.`);
   renderAdminView(); updateAdminCounts();
 }
 
