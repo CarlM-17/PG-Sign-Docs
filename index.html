@@ -135,6 +135,19 @@
   .remark-actions { display: flex; gap: 4px; margin-top: 6px; }
   .remark-actions button { padding: 3px 8px; font-size: 11px; }
   .staff-remark { background: #fffbeb; border: 1px solid #fde68a; border-left: 3px solid var(--gold); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 12px; color: #78350f; white-space: pre-wrap; }
+  /* Positions, categories, date stamps */
+  .pos-chip { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #e0e7ff; color: #3730a3; white-space: nowrap; }
+  .pos-chip.store_officer { background: #d1fadf; color: #065f46; }
+  .pos-chip.area_manager { background: #ede9fe; color: #5b21b6; }
+  .pos-chip.regional_manager { background: #fef3c7; color: #78350f; }
+  .cat-chip { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .cat-chip.admin { background: #dbeafe; color: #1e40af; }
+  .cat-chip.ops { background: #d1fadf; color: #065f46; }
+  .stamps { font-size: 11px; color: var(--muted); line-height: 1.7; white-space: nowrap; }
+  .stamps span { display: inline-block; min-width: 66px; font-weight: 700; color: var(--green-900); }
+  .folder-group.subfolder { margin: 10px 12px; border-color: var(--green-100); }
+  .folder-group.subfolder > .folder-head { background: #fff; }
+  .folder-group.subfolder > .folder-head:hover { background: var(--green-50); }
   /* Staff dashboard charts */
   .stack-bar { display: flex; height: 26px; border-radius: 13px; overflow: hidden; background: #f1f5f9; }
   .stack-bar.sm { height: 10px; border-radius: 5px; }
@@ -451,7 +464,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v13.2-fullwidth';
+const APP_VERSION = 'v14.2-space';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -502,7 +515,7 @@ let currentUser = null;
 let authMode = 'login';
 let adminView = 'dashboard';
 let docsFilter = 'pending';
-let staffTab = 'pending';
+let staffTab = 'for_validation';
 let staffView = 'dashboard';
 let selectedFiles = [];
 
@@ -572,8 +585,16 @@ async function renderAuth() {
           ${authMode === 'signup' ? `
             <div class="form-group"><label>Full name</label><input type="text" id="fullName" required placeholder="e.g. Juan Dela Cruz"></div>
             <div class="form-group">
-              <label>Select your store(s) *</label>
-              <p style="font-size:12px;color:var(--muted);margin:-2px 0 8px;">Tick every store you handle. You can pick more than one.</p>
+              <label>Position *</label>
+              <select id="signupPosition" required onchange="onSignupPositionChange()">
+                <option value="admin_staff">Admin Staff</option>
+                <option value="store_officer">Store Manager / Store Officer</option>
+                <option value="area_manager">Area Manager</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="storePickLabel">Select your store(s) *</label>
+              <p style="font-size:12px;color:var(--muted);margin:-2px 0 8px;" id="storePickHint">Tick every store you handle. You can pick more than one.</p>
               <div class="store-picker" id="storePicker">
                 ${(stores.data || []).map(s => `
                   <label class="store-opt">
@@ -597,6 +618,20 @@ async function renderAuth() {
   document.getElementById('authForm').onsubmit = handleAuth;
 }
 
+function onSignupPositionChange() {
+  const v = (document.getElementById('signupPosition') || {}).value;
+  const lbl = document.getElementById('storePickLabel');
+  const hint = document.getElementById('storePickHint');
+  if (!lbl || !hint) return;
+  if (v === 'area_manager') {
+    lbl.textContent = 'Select the stores under you *';
+    hint.textContent = 'Tick every store you supervise. You will validate the documents from these stores.';
+  } else {
+    lbl.textContent = 'Select your store(s) *';
+    hint.textContent = 'Tick every store you handle. You can pick more than one.';
+  }
+}
+
 async function handleAuth(e) {
   e.preventDefault();
   const email = document.getElementById('email').value.trim();
@@ -605,14 +640,16 @@ async function handleAuth(e) {
   try {
     if (authMode === 'signup') {
       const fullName = document.getElementById('fullName').value.trim();
+      const position = document.getElementById('signupPosition').value;
       const picked = Array.from(document.querySelectorAll('#storePicker input:checked'));
-      if (!picked.length) throw new Error('Please tick at least one store.');
+      if (!picked.length) throw new Error(position === 'area_manager' ? 'Please tick the stores under you.' : 'Please tick at least one store.');
       const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
       if (error) throw error;
       if (data.user) {
         // Primary store = the first one ticked (used for display)
         await sb.from('pgds_profiles').update({
           full_name: fullName,
+          position,
           store_number: picked[0].dataset.num,
           store_name: picked[0].dataset.name
         }).eq('id', data.user.id);
@@ -1204,10 +1241,136 @@ function openMessagesFromReminder(btn) {
   renderStaff();
 }
 
+// ---------- POSITIONS, CATEGORIES, DOCUMENT STATUS ----------
+const POSITIONS = {
+  admin_staff:      { label: 'Admin Staff',                    short: 'Admin Staff',      category: 'admin' },
+  store_officer:    { label: 'Store Manager / Store Officer',  short: 'Store Officer',    category: 'store_ops' },
+  area_manager:     { label: 'Area Manager',                   short: 'Area Manager',     category: 'store_ops' },
+  regional_manager: { label: 'Regional Manager (Signer)',      short: 'Signer',           category: 'admin' },
+};
+const DOC_CATEGORIES = { admin: 'Admin Docs', store_ops: 'Store Ops Docs' };
+const DOC_STATUS = {
+  for_validation: { label: 'For validation', badge: 'pending',  hint: 'Waiting for the Area Manager' },
+  pending:        { label: 'For signature',  badge: 'normal',   hint: 'In the signer\'s queue' },
+  approved:       { label: 'Approved',       badge: 'approved', hint: 'Signed and finalized' },
+  rejected:       { label: 'Rejected',       badge: 'rejected', hint: 'Rejected by the signer' },
+  returned:       { label: 'Returned',       badge: 'high',     hint: 'Sent back by the Area Manager' },
+};
+function myPosition() { return (currentUser && currentUser.position) || 'admin_staff'; }
+function isAreaManager() { return myPosition() === 'area_manager'; }
+function positionLabel(p) { return (POSITIONS[p] || POSITIONS.admin_staff).label; }
+function statusBadge(s) {
+  const d = DOC_STATUS[s] || DOC_STATUS.pending;
+  return `<span class="badge ${d.badge}">${d.label}</span>`;
+}
+function categoryChip(c) {
+  const isAdmin = (c || 'admin') === 'admin';
+  return `<span class="cat-chip ${isAdmin ? 'admin' : 'ops'}">${isAdmin ? '🗂️' : '🏬'} ${DOC_CATEGORIES[c] || DOC_CATEGORIES.admin}</span>`;
+}
+// Uploaded / validated / signed stamps, always in the same format
+function stampsHTML(d) {
+  return `<div class="stamps">
+    <div><span>Uploaded</span>${fmtDateTime(d.created_at)}</div>
+    <div><span>Validated</span>${d.validated_at ? fmtDateTime(d.validated_at) + (d.validated_name ? ` · ${h(d.validated_name)}` : '') : '-'}</div>
+    <div><span>Signed</span>${d.signed_at && d.status === 'approved' ? fmtDateTime(d.signed_at) : '-'}</div>
+  </div>`;
+}
+
+// ---------- AREA MANAGER: FOR VALIDATION ----------
+async function renderValidationPane() {
+  const pane = document.getElementById('staffPane'); if (!pane) return;
+  pane.innerHTML = '<p class="empty">Loading documents for validation...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*')
+    .eq('status', 'for_validation')
+    .order('urgency', { ascending: false })
+    .order('created_at', { ascending: true });
+  if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  const list = data || [];
+  setValidationBadge(list.length);
+  pane.innerHTML = `
+    <div class="privacy-note">
+      <span class="privacy-icon">🛡️</span>
+      <div><strong>You validate before the signer sees it.</strong> Review each document, then confirm it. Only validated documents reach the Regional Manager's signing queue. You do not sign here - the physical document is still signed as usual.</div>
+    </div>
+    ${list.length ? `<table><thead><tr>
+      <th>Document</th><th>Category</th><th>Store</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Waiting</th><th>Actions</th>
+    </tr></thead><tbody>
+      ${list.map(d => `<tr>
+        <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${h(d.notes)}</div>` : ''}
+          <div style="margin-top:4px;"><span class="badge ${d.urgency}">${d.urgency}</span></div></td>
+        <td>${categoryChip(d.doc_category)}</td>
+        <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
+        <td>${h(d.uploader_name || '-')}</td>
+        <td>${fmtDateTime(d.created_at)}</td>
+        <td>${ageBadge(ageHours(d.created_at))}</td>
+        <td class="actions">
+          <button class="secondary" onclick="openInAppViewer('pgds-pending','${d.original_file_path}')">👁️ View</button>
+          <button onclick="validateDoc('${d.id}')">✅ Validate</button>
+          <button class="danger" onclick="returnDoc('${d.id}')">↩️ Send back</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>` : '<p class="empty">📭 Nothing waiting for validation right now.</p>'}`;
+}
+
+async function validateDoc(id) {
+  if (!confirm('Confirm validation\n\nI have reviewed this document and it is complete and correct.\nIt will be sent to the Regional Manager for signing.')) return;
+  const { data: updated, error } = await sb.from('pgds_documents').update({
+    status: 'pending',
+    validated_by: currentUser.id,
+    validated_name: niceName(),
+    validated_at: new Date().toISOString()
+  }).eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!updated || !updated.length) return toast('Could not validate - permission denied.', 'error');
+  toast('✅ Validated and sent for signing');
+  renderValidationPane();
+}
+
+async function returnDoc(id) {
+  const reason = prompt('Why are you sending this back to the uploader?');
+  if (reason === null) return;
+  if (!reason.trim()) return toast('A reason is required.', 'warn');
+  const { data: updated, error } = await sb.from('pgds_documents').update({
+    status: 'returned',
+    return_reason: reason.trim(),
+    returned_by: currentUser.id,
+    returned_at: new Date().toISOString()
+  }).eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!updated || !updated.length) return toast('Could not send back - permission denied.', 'error');
+  toast('↩️ Sent back to the uploader');
+  renderValidationPane();
+}
+
+function setValidationBadge(n) {
+  const b = document.getElementById('valCount');
+  if (b) b.textContent = n ? `(${n})` : '';
+}
+async function updateValidationCount() {
+  if (!currentUser || !isAreaManager()) return;
+  const { count } = await sb.from('pgds_documents').select('*', { count: 'exact', head: true }).eq('status', 'for_validation');
+  setValidationBadge(count || 0);
+}
+
+// Uploader resubmits a document the Area Manager sent back
+async function resubmitDoc(id) {
+  if (!confirm('Send this document back to the Area Manager for validation?')) return;
+  const { data: updated, error } = await sb.from('pgds_documents').update({
+    status: 'for_validation', return_reason: null, returned_at: null, returned_by: null
+  }).eq('id', id).select('id');
+  if (error) return toast(error.message, 'error');
+  if (!updated || !updated.length) return toast('Could not resubmit - permission denied.', 'error');
+  toast('📨 Sent for validation again');
+  loadMyDocs();
+}
+
 // ---------- STAFF TABS ----------
 function staffTabsHTML() {
   const t = (v, label) => `<div class="tab ${staffView === v ? 'active' : ''}" data-sv="${v}">${label}</div>`;
-  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${t('upload', '➕ Add Docs for Signing')}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
+  const main = isAreaManager()
+    ? t('validate', '🛡️ For Validation <span id="valCount"></span>')
+    : t('upload', '➕ Add Docs for Signing');
+  return `<div class="tabs">${t('dashboard', '📊 Dashboard')}${main}${t('status', '📄 Documents Status')}${t('messages', '📢 Messages <span id="msgUnread"></span>')}${t('todo', '✅ To-Do')}${t('notes', '📝 Notes')}${t('guide', '📖 Admin Staff Guide')}</div>`;
 }
 
 // ---------- TO-DO (private per staff) ----------
@@ -1638,6 +1801,17 @@ function guideHTML() {
     </div>
 
     <div class="guide-steps">
+      <h4>👥 Positions and how a document travels</h4>
+      <ol>
+        <li><strong>Admin Staff</strong> upload <strong>Admin Docs</strong>. <strong>Store Managers / Store Officers</strong> upload <strong>Store Ops Docs</strong> and can also open the Admin Docs of their store.</li>
+        <li><strong>Area Managers</strong> do not sign in the app. They <strong>validate</strong> first: every uploaded document waits under <em>For Validation</em> until the Area Manager of that store confirms it.</li>
+        <li>Once validated, the document moves to the <strong>Regional Manager</strong> for the digital signature. Nothing reaches the signer unvalidated.</li>
+        <li>If something is missing, the Area Manager <strong>sends it back</strong> with a reason. It appears under <em>Returned</em> - fix it, then tap <strong>Resubmit</strong>.</li>
+        <li>Every document carries three stamps: <strong>uploaded</strong>, <strong>validated</strong>, and <strong>signed</strong>, each with date and time.</li>
+      </ol>
+    </div>
+
+    <div class="guide-steps">
       <h4>🏪 Handling more than one store</h4>
       <ol>
         <li>At signup, <strong>tick every store you handle</strong> - you can select more than one.</li>
@@ -1725,7 +1899,10 @@ function toggleMenu(e) {
 
 async function renderStaff() {
   setTimeout(updateMsgUnread, 0);
-  const titles = { dashboard: 'Dashboard', upload: 'Add Docs for Signing', status: 'Documents Status', messages: 'Messages', todo: 'To-Do', notes: 'Notes', guide: 'Admin Staff Guide' };
+  setTimeout(updateValidationCount, 0);
+  if (staffView === 'upload' && isAreaManager()) staffView = 'validate';
+  if (staffView === 'validate' && !isAreaManager()) staffView = 'upload';
+  const titles = { dashboard: 'Dashboard', upload: 'Add Docs for Signing', validate: 'For Validation', status: 'Documents Status', messages: 'Messages', todo: 'To-Do', notes: 'Notes', guide: 'Admin Staff Guide' };
   app.innerHTML = `
     ${headerHTML(titles[staffView] || 'Dashboard')}
     <div class="container">
@@ -1735,6 +1912,7 @@ async function renderStaff() {
   document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
   centerActiveTabs();
   if (staffView === 'upload') return renderUploadPane();
+  if (staffView === 'validate') return renderValidationPane();
   if (staffView === 'status') return renderStatusPane();
   if (staffView === 'messages') return renderMessagesPane();
   if (staffView === 'todo') return renderTodoPane();
@@ -1744,15 +1922,17 @@ async function renderStaff() {
 }
 
 // ---------- STAFF DASHBOARD ----------
-const STATUS_COLORS = { pending: '#f59e0b', approved: '#10b981', rejected: '#dc2626' };
+const STATUS_COLORS = { for_validation: '#8b5cf6', returned: '#f97316', pending: '#f59e0b', approved: '#10b981', rejected: '#dc2626' };
 
 async function renderStaffDashboard() {
   const pane = document.getElementById('staffPane'); if (!pane) return;
+  // RLS scopes this to the documents this position may see for their store(s)
   const { data, error } = await sb.from('pgds_documents')
-    .select('id,title,status,created_at,signed_at,store_number,store_name,urgency')
-    .eq('uploader_id', currentUser.id);
+    .select('id,title,status,created_at,signed_at,validated_at,store_number,store_name,urgency,doc_category');
   if (error) return pane.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
   const all = data || [];
+  const forValidation = all.filter(d => d.status === 'for_validation');
+  const returned = all.filter(d => d.status === 'returned');
   const pending = all.filter(d => d.status === 'pending');
   const approved = all.filter(d => d.status === 'approved');
   const rejected = all.filter(d => d.status === 'rejected');
@@ -1792,7 +1972,9 @@ async function renderStaffDashboard() {
   pane.innerHTML = `
     <div class="kpi-row">
       <div class="kpi blue"><div class="label">Total submitted</div><div class="value">${all.length}</div><div class="sub">${thisMonth} this month · ${submittedToday} today</div></div>
-      <div class="kpi gold"><div class="label">Pending</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h waiting' : 'All caught up'}</div></div>
+      <div class="kpi gold"><div class="label">For validation</div><div class="value">${forValidation.length}</div><div class="sub">Waiting for the Area Manager</div></div>
+      <div class="kpi red"><div class="label">Returned</div><div class="value">${returned.length}</div><div class="sub">Needs fixing and resubmit</div></div>
+      <div class="kpi gold"><div class="label">For signature</div><div class="value">${pending.length}</div><div class="sub">${oldestPending ? 'Oldest: ' + Math.floor(oldestPending) + 'h waiting' : 'All caught up'}</div></div>
       <div class="kpi"><div class="label">Approved</div><div class="value">${approved.length}</div><div class="sub">${all.length ? Math.round(pct(approved.length)) + '% of all' : 'None yet'}</div></div>
       <div class="kpi red"><div class="label">Rejected</div><div class="value">${rejected.length}</div><div class="sub">${all.length ? Math.round(pct(rejected.length)) + '% of all' : 'None yet'}</div></div>
       <div class="kpi blue"><div class="label">Avg turnaround</div><div class="value">${avgTurnaround.toFixed(1)}h</div><div class="sub">Upload → signature</div></div>
@@ -1802,14 +1984,13 @@ async function renderStaffDashboard() {
     <div class="chart-box">
       <h3>📊 Status breakdown</h3>
       <div class="stack-bar">
-        ${pending.length ? `<div class="stack-seg" style="width:${pct(pending.length)}%;background:${STATUS_COLORS.pending};" title="Pending: ${pending.length}"></div>` : ''}
-        ${approved.length ? `<div class="stack-seg" style="width:${pct(approved.length)}%;background:${STATUS_COLORS.approved};" title="Approved: ${approved.length}"></div>` : ''}
-        ${rejected.length ? `<div class="stack-seg" style="width:${pct(rejected.length)}%;background:${STATUS_COLORS.rejected};" title="Rejected: ${rejected.length}"></div>` : ''}
+        ${[['for_validation', forValidation.length], ['returned', returned.length], ['pending', pending.length], ['approved', approved.length], ['rejected', rejected.length]]
+          .filter(([, n]) => n)
+          .map(([s, n]) => `<div class="stack-seg" style="width:${pct(n)}%;background:${STATUS_COLORS[s]};" title="${DOC_STATUS[s].label}: ${n}"></div>`).join('')}
       </div>
       <div class="chart-legend">
-        <span><i style="background:${STATUS_COLORS.pending}"></i> Pending <strong>${pending.length}</strong> (${Math.round(pct(pending.length))}%)</span>
-        <span><i style="background:${STATUS_COLORS.approved}"></i> Approved <strong>${approved.length}</strong> (${Math.round(pct(approved.length))}%)</span>
-        <span><i style="background:${STATUS_COLORS.rejected}"></i> Rejected <strong>${rejected.length}</strong> (${Math.round(pct(rejected.length))}%)</span>
+        ${[['for_validation', forValidation.length], ['returned', returned.length], ['pending', pending.length], ['approved', approved.length], ['rejected', rejected.length]]
+          .map(([s, n]) => `<span><i style="background:${STATUS_COLORS[s]}"></i> ${DOC_STATUS[s].label} <strong>${n}</strong> (${Math.round(pct(n))}%)</span>`).join('')}
       </div>
     </div>
 
@@ -1823,17 +2004,16 @@ async function renderStaffDashboard() {
 
     <div class="box">
       <h3>Documents by title / category</h3>
-      <table><thead><tr><th>Title / category</th><th>Total</th><th>Pending</th><th>Approved</th><th>Rejected</th><th class="title-mix">Mix</th></tr></thead><tbody>
+      <table><thead><tr><th>Title / category</th><th>Total</th><th>In progress</th><th>Approved</th><th>Rejected / returned</th><th class="title-mix">Mix</th></tr></thead><tbody>
         ${titleRows.map(r => `<tr>
           <td><strong>${h(r.label)}</strong></td>
           <td>${r.total}</td>
-          <td>${r.pending || 0}</td>
+          <td>${(r.for_validation || 0) + (r.pending || 0)}</td>
           <td>${r.approved || 0}</td>
-          <td>${r.rejected || 0}</td>
+          <td>${(r.rejected || 0) + (r.returned || 0)}</td>
           <td class="title-mix"><div class="stack-bar sm">
-            ${r.pending ? `<div class="stack-seg" style="width:${r.pending / r.total * 100}%;background:${STATUS_COLORS.pending};"></div>` : ''}
-            ${r.approved ? `<div class="stack-seg" style="width:${r.approved / r.total * 100}%;background:${STATUS_COLORS.approved};"></div>` : ''}
-            ${r.rejected ? `<div class="stack-seg" style="width:${r.rejected / r.total * 100}%;background:${STATUS_COLORS.rejected};"></div>` : ''}
+            ${['for_validation','returned','pending','approved','rejected']
+              .filter(s => r[s]).map(s => `<div class="stack-seg" style="width:${r[s] / r.total * 100}%;background:${STATUS_COLORS[s]};"></div>`).join('')}
           </div></td>
         </tr>`).join('')}
       </tbody></table>
@@ -1843,6 +2023,7 @@ async function renderStaffDashboard() {
 // ---------- ADD DOCS FOR SIGNING ----------
 function renderUploadPane() {
   const pane = document.getElementById('staffPane'); if (!pane) return;
+  const defCat = (POSITIONS[myPosition()] || {}).category || 'admin';
   pane.innerHTML = `
     <div class="box">
       <h3>My stores</h3>
@@ -1865,6 +2046,14 @@ function renderUploadPane() {
             ${currentUser.stores.map((s, i) => `<option value="${i}">${h(s.store_number)} - ${h(s.store_name)}</option>`).join('')}
           </select>
         </div>` : ''}
+        <div class="form-group">
+          <label>Document type *</label>
+          <select id="docCategory">
+            <option value="admin" ${defCat === 'admin' ? 'selected' : ''}>🗂️ Admin Docs</option>
+            <option value="store_ops" ${defCat === 'store_ops' ? 'selected' : ''}>🏬 Store Ops Docs</option>
+          </select>
+          <p style="font-size:12px;color:var(--muted);margin-top:6px;">Set from your position. Change it if this document belongs to the other folder.</p>
+        </div>
         <div class="form-group"><label>Document title *</label><input type="text" id="docTitle" required placeholder="e.g. September expense report"></div>
         <div class="row2">
           <div class="form-group"><label>Urgency</label><select id="docUrgency">
@@ -1903,10 +2092,10 @@ function renderStatusPane() {
   const pane = document.getElementById('staffPane'); if (!pane) return;
   pane.innerHTML = `
     <h2 style="font-size:16px;margin-bottom:12px;color:var(--green-900);">Documents Status</h2>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 10px;">Documents for your store${(currentUser.stores || []).length > 1 ? 's' : ''}, at every stage.</p>
     <div class="tabs">
-      <div class="tab ${staffTab==='pending'?'active':''}" data-t="pending">Pending</div>
-      <div class="tab ${staffTab==='approved'?'active':''}" data-t="approved">Approved</div>
-      <div class="tab ${staffTab==='rejected'?'active':''}" data-t="rejected">Rejected</div>
+      ${['for_validation','returned','pending','approved','rejected'].map(s =>
+        `<div class="tab ${staffTab===s?'active':''}" data-t="${s}">${DOC_STATUS[s].label}</div>`).join('')}
     </div>
     <div id="docList"></div>`;
   pane.querySelectorAll('.tab[data-t]').forEach(t => t.onclick = () => { staffTab = t.dataset.t; renderStatusPane(); });
@@ -2080,14 +2269,17 @@ async function handleUpload(e) {
     const stores = currentUser.stores || [];
     const sel = document.getElementById('docStore');
     const chosen = stores.length > 1 && sel ? stores[Number(sel.value)] : (stores[0] || null);
+    const catEl = document.getElementById('docCategory');
     const ins = await sb.from('pgds_documents').insert({
       uploader_id: currentUser.id,
+      uploader_name: niceName(),
       store_number: chosen ? chosen.store_number : currentUser.store_number,
       store_name: chosen ? chosen.store_name : currentUser.store_name,
-      title, notes, urgency, original_file_path: path, status: 'pending'
+      doc_category: catEl ? catEl.value : ((POSITIONS[myPosition()] || {}).category || 'admin'),
+      title, notes, urgency, original_file_path: path, status: 'for_validation'
     });
     if (ins.error) { await sb.storage.from('pgds-pending').remove([path]); throw ins.error; }
-    showMsg('uploadMsg', `Uploaded! ${selectedFiles.length} file(s) merged into one signed queue.`, 'success');
+    showMsg('uploadMsg', `Uploaded! ${selectedFiles.length} file(s) merged into one document. It is now waiting for Area Manager validation.`, 'success');
     document.getElementById('uploadForm').reset();
     selectedFiles = []; updateFileList();
     staffTab = 'pending';
@@ -2098,22 +2290,37 @@ async function handleUpload(e) {
 async function loadMyDocs() {
   const list = document.getElementById('docList');
   list.innerHTML = '<p class="empty">Loading...</p>';
-  const { data, error } = await sb.from('pgds_documents').select('*').eq('uploader_id', currentUser.id).eq('status', staffTab).order('created_at', { ascending: false });
+  // No uploader filter: the database already limits this to documents for their store(s)
+  const { data, error } = await sb.from('pgds_documents').select('*').eq('status', staffTab).order('created_at', { ascending: false });
   if (error) return list.innerHTML = `<div class="msg error">${error.message}</div>`;
-  if (!data.length) return list.innerHTML = `<p class="empty">No ${staffTab} documents.</p>`;
+  if (!data.length) return list.innerHTML = `<p class="empty">No documents under "${DOC_STATUS[staffTab].label}".</p>`;
   const multi = (currentUser.stores || []).length > 1;
-  list.innerHTML = `<table><thead><tr><th>Title</th>${multi ? '<th>Store</th>' : ''}<th>Urgency</th><th>Uploaded</th><th>Age</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-    ${data.map(d => { const age = ageHours(d.created_at, d.signed_at); return `<tr>
-      <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${h(d.notes)}</div>` : ''}${d.admin_remarks ? `<div class="staff-remark">📣 <strong>Message from signer:</strong><br>${h(d.admin_remarks)}</div>` : ''}</td>
+  list.innerHTML = `<table><thead><tr>
+    <th>Title</th><th>Type</th>${multi ? '<th>Store</th>' : ''}<th>Uploaded by</th><th>Urgency</th><th>Dates</th><th>Status</th><th>Actions</th>
+  </tr></thead><tbody>
+    ${data.map(d => {
+      const mine = d.uploader_id === currentUser.id;
+      return `<tr>
+      <td><strong>${h(d.title)}</strong>
+        ${d.notes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">📝 ${h(d.notes)}</div>` : ''}
+        ${d.admin_remarks ? `<div class="staff-remark">📣 <strong>Message from signer:</strong><br>${h(d.admin_remarks)}</div>` : ''}
+        ${d.status === 'returned' && d.return_reason ? `<div class="staff-remark" style="background:#fff7ed;border-color:#fed7aa;border-left-color:#f97316;color:#9a3412;">↩️ <strong>Sent back by the Area Manager:</strong><br>${h(d.return_reason)}</div>` : ''}
+      </td>
+      <td>${categoryChip(d.doc_category)}</td>
       ${multi ? `<td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>` : ''}
+      <td>${h(d.uploader_name || (mine ? niceName() : '-'))}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
-      <td>${new Date(d.created_at).toLocaleString()}</td>
-      <td>${ageBadge(age)}${d.signed_at ? `<div style="font-size:11px;color:var(--muted);">until signed</div>` : ''}</td>
-      <td><span class="badge ${d.status}">${d.status}</span>${d.status==='rejected'&&d.reject_reason?`<div style="font-size:12px;color:#991b1b;margin-top:4px;">${h(d.reject_reason)}</div>`:''}</td>
+      <td>${stampsHTML(d)}</td>
+      <td>${statusBadge(d.status)}
+        ${d.status==='rejected'&&d.reject_reason?`<div style="font-size:12px;color:#991b1b;margin-top:4px;">${h(d.reject_reason)}</div>`:''}
+        ${d.status==='for_validation'?`<div style="font-size:11px;color:var(--muted);margin-top:4px;">${ageBadge(ageHours(d.created_at))} waiting</div>`:''}
+      </td>
       <td class="actions">
-        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button><button class="secondary" onclick="downloadFile('pgds-signed','${d.signed_file_path}')">👁️ View</button>`:''}
-        ${d.status==='pending'?`<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ Preview</button>`:''}
-        ${d.status==='pending'?`<button class="danger" onclick="cancelDoc('${d.id}','${d.original_file_path}')">Cancel</button>`:''}
+        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
+        <button class="secondary" onclick="downloadFile('pgds-signed','${d.signed_file_path}')">👁️ View</button>`:
+        `<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ Preview</button>`}
+        ${mine && d.status==='returned'?`<button onclick="resubmitDoc('${d.id}')">📨 Resubmit</button>`:''}
+        ${mine && (d.status==='for_validation'||d.status==='returned')?`<button class="danger" onclick="cancelDoc('${d.id}','${d.original_file_path}')">Cancel</button>`:''}
       </td>
     </tr>`; }).join('')}</tbody></table>`;
 }
@@ -2234,6 +2441,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='pending-users'?'active':''}" data-v="pending-users">Pending Users <span id="pendingCount"></span></div>
         <div class="tab ${adminView==='users'?'active':''}" data-v="users">All Users</div>
         <div class="tab ${adminView==='documents'?'active':''}" data-v="documents">📋 Signing Queue <span id="docsCount"></span></div>
+        <div class="tab ${adminView==='validation'?'active':''}" data-v="validation">🛡️ For Validation <span id="valQueueCount"></span></div>
         <div class="tab ${adminView==='announcements'?'active':''}" data-v="announcements">📢 Announcements</div>
         <div class="tab ${adminView==='approved-folders'?'active':''}" data-v="approved-folders">📁 Approved Docs</div>
         <div class="tab ${adminView==='rejected'?'active':''}" data-v="rejected">❌ Rejected</div>
@@ -2260,6 +2468,8 @@ async function updateAdminCounts() {
   const dc = document.getElementById('docsCount'); if (dc) dc.textContent = pd ? `(${pd})` : '';
   const { count: sr } = await sb.from('pgds_store_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
   const sc = document.getElementById('storeReqCount'); if (sc) sc.textContent = sr ? `(${sr})` : '';
+  const { count: fv } = await sb.from('pgds_documents').select('*', { count: 'exact', head: true }).eq('status', 'for_validation');
+  const vc = document.getElementById('valQueueCount'); if (vc) vc.textContent = fv ? `(${fv})` : '';
   centerActiveTabs();
 }
 
@@ -2271,6 +2481,7 @@ async function renderAdminView() {
   if (adminView === 'documents') return renderPendingQueue(el);
   if (adminView === 'approved-folders') return renderApprovedFolders(el);
   if (adminView === 'rejected') return renderRejected(el);
+  if (adminView === 'validation') return renderAdminValidationQueue(el);
   if (adminView === 'announcements') return annOpenPostId ? renderPostThread(el, annOpenPostId) : renderAnnouncements(el);
   if (adminView === 'store-requests') return renderStoreRequests(el);
   if (adminView === 'stores') return renderStores(el);
@@ -2285,6 +2496,7 @@ async function renderDashboard(el) {
   const pending = all.filter(d => d.status === 'pending');
   const approved = all.filter(d => d.status === 'approved');
   const rejected = all.filter(d => d.status === 'rejected');
+  const awaitingValidation = all.filter(d => d.status === 'for_validation').length;
   const today = new Date(); today.setHours(0,0,0,0);
   const signedToday = approved.filter(d => d.signed_at && new Date(d.signed_at) >= today).length;
   const oldestPending = pending.reduce((max, d) => Math.max(max, ageHours(d.created_at)), 0);
@@ -2300,6 +2512,7 @@ async function renderDashboard(el) {
   el.innerHTML = `
     <div class="kpi-row">
       <div class="kpi gold"><div class="label">Pending Now</div><div class="value">${pending.length}</div><div class="sub">${urgent} urgent/high</div></div>
+      <div class="kpi" style="border-left-color:#8b5cf6;"><div class="label">With Area Managers</div><div class="value">${awaitingValidation}</div><div class="sub">Not yet validated</div></div>
       <div class="kpi"><div class="label">Signed Today</div><div class="value">${signedToday}</div><div class="sub">of ${approved.length} total signed</div></div>
       <div class="kpi blue"><div class="label">Avg Wait Time</div><div class="value">${avgWait.toFixed(1)}h</div><div class="sub">Upload → Signature</div></div>
       <div class="kpi red"><div class="label">Oldest Pending</div><div class="value">${Math.floor(oldestPending)}h</div><div class="sub">${critical} over 48h</div></div>
@@ -2323,7 +2536,7 @@ async function renderDashboard(el) {
           <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
           <td>${fmtDateTime(d.created_at)}</td>
           <td>
-            <span class="badge ${d.status}">${d.status}</span>
+            ${statusBadge(d.status)}
             ${d.status === 'rejected' ? `<div style="font-size:12px;color:#991b1b;margin-top:4px;">Reason: ${h(d.reject_reason || 'not specified')}</div>` : ''}
           </td>
           <td>${ageBadge(ageHours(d.created_at, d.signed_at))}</td>
@@ -2358,9 +2571,10 @@ async function renderPendingUsers(el) {
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
   if (!data.length) return el.innerHTML = '<p class="empty">No pending approvals.</p>';
   const assigns = await fetchStoreAssignments(data.map(u => u.id));
-  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Assigned stores</th><th>Signed up</th><th>Actions</th></tr></thead><tbody>
+  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Position</th><th>Assigned stores</th><th>Signed up</th><th>Actions</th></tr></thead><tbody>
     ${data.map(u => `<tr>
       <td>${h(u.email)}</td><td>${h(u.full_name||'-')}</td>
+      <td><span class="pos-chip ${u.position || 'admin_staff'}">${h(positionLabel(u.position))}</span></td>
       <td>
         <div class="store-chips">${storeChips(assigns[u.id])}</div>
         <button class="secondary" style="margin-top:6px;padding:4px 10px;font-size:11px;" onclick="openStoreAssign('${u.id}')">✏️ Edit stores</button>
@@ -2376,17 +2590,26 @@ async function renderPendingUsers(el) {
 // Dialog to assign stores to a user
 async function openStoreAssign(userId) {
   closePopover();
-  const [{ data: allStores }, assigns] = await Promise.all([
+  const [{ data: allStores }, assigns, { data: prof }] = await Promise.all([
     sb.from('pgds_stores').select('*').eq('active', true).order('store_number', { ascending: true }),
-    fetchStoreAssignments([userId])
+    fetchStoreAssignments([userId]),
+    sb.from('pgds_profiles').select('position, full_name, email').eq('id', userId).maybeSingle()
   ]);
   const mine = new Set((assigns[userId] || []).map(s => s.id));
+  const pos = (prof && prof.position) || 'admin_staff';
   const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
   const pop = document.createElement('div'); pop.className = 'popover';
   pop.innerHTML = `
     <button class="popover-close" onclick="closePopover()">&times;</button>
-    <h4>Assign stores</h4>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Tick every store this person handles. They will choose which store each upload belongs to.</p>
+    <h4>Position and stores${prof ? ' - ' + h(prof.full_name || prof.email) : ''}</h4>
+    <div class="form-group">
+      <label>Position</label>
+      <select id="assignPosition">
+        ${['admin_staff','store_officer','area_manager'].map(p => `<option value="${p}" ${pos === p ? 'selected' : ''}>${POSITIONS[p].label}</option>`).join('')}
+      </select>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">Area Managers validate documents for their stores. Store Officers also see Admin Docs; Admin Staff see Admin Docs only.</p>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Tick every store this person handles or supervises.</p>
     <div class="store-picker" id="assignPicker">
       ${(allStores || []).map(s => `
         <label class="store-opt">
@@ -2409,8 +2632,11 @@ async function saveStoreAssign(userId) {
     const { error } = await sb.from('pgds_user_stores').insert(picked.map(p => ({ user_id: userId, store_id: p.value })));
     if (error) throw error;
     // Keep the profile's primary store in sync for display
+    const posEl = document.getElementById('assignPosition');
     await sb.from('pgds_profiles').update({
-      store_number: picked[0].dataset.num, store_name: picked[0].dataset.name
+      store_number: picked[0].dataset.num,
+      store_name: picked[0].dataset.name,
+      ...(posEl ? { position: posEl.value } : {})
     }).eq('id', userId);
     closePopover();
     toast(`✓ ${picked.length} store(s) assigned`);
@@ -2424,9 +2650,10 @@ async function renderAllUsers(el) {
   if (error) return el.innerHTML = `<div class="msg error">${error.message}</div>`;
   const nameById = {}; data.forEach(u => nameById[u.id] = u.full_name || u.email);
   const assigns = await fetchStoreAssignments(data.map(u => u.id));
-  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Assigned stores</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th></tr></thead><tbody>
+  el.innerHTML = `<table><thead><tr><th>Email</th><th>Full Name</th><th>Position</th><th>Assigned stores</th><th>Role</th><th>Status</th><th>Approved By</th><th>Actions</th></tr></thead><tbody>
     ${data.map(u => `<tr>
       <td>${h(u.email)}</td><td>${h(u.full_name||'-')}</td>
+      <td><span class="pos-chip ${u.position || 'admin_staff'}">${h(positionLabel(u.position))}</span></td>
       <td>${u.role === 'admin' ? '<span style="color:var(--muted);font-size:12px;">all stores</span>' : `<div class="store-chips">${storeChips(assigns[u.id])}</div>`}</td>
       <td><span class="badge ${u.role==='admin'?'urgent':'normal'}">${u.role}</span></td>
       <td><span class="badge ${u.status}">${u.status}</span></td>
@@ -2451,13 +2678,14 @@ async function renderPendingQueue(el) {
     const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
     (ps||[]).forEach(p => profMap[p.id] = p);
   }
-  el.innerHTML = `<table><thead><tr><th>Title</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Uploaded</th><th>Age</th><th>Remarks / Comments</th><th>Actions</th></tr></thead><tbody>
+  el.innerHTML = `<table><thead><tr><th>Title</th><th>Type</th><th>Uploader</th><th>Store</th><th>Urgency</th><th>Dates</th><th>Age</th><th>Remarks / Comments</th><th>Actions</th></tr></thead><tbody>
     ${data.map(d => { const up = profMap[d.uploader_id]||{}; const age = ageHours(d.created_at); return `<tr>
-      <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${h(d.notes)}</div>`:''}${d.signed_file_path?`<div style="font-size:11px;color:#059669;margin-top:4px;">✓ Partially signed - open to continue</div>`:''}</td>
-      <td>${h(up.full_name||up.email||'-')}</td>
+      <td><strong>${h(d.title)}</strong>${d.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${h(d.notes)}</div>`:''}${d.signed_file_path?`<div style="font-size:11px;color:#059669;margin-top:4px;">✓ Partially signed - open to continue</div>`:''}</td>
+      <td>${categoryChip(d.doc_category)}</td>
+      <td>${h(d.uploader_name || up.full_name || up.email || '-')}</td>
       <td>${h(d.store_number||up.store_number||'-')} - ${h(d.store_name||up.store_name||'')}</td>
       <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
-      <td>${new Date(d.created_at).toLocaleString()}</td>
+      <td>${stampsHTML(d)}</td>
       <td>${ageBadge(age)}</td>
       <td class="remarks-cell">${renderRemarksCell(d)}</td>
       <td class="actions">
@@ -2465,6 +2693,57 @@ async function renderPendingQueue(el) {
         <button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>
       </td>
     </tr>`; }).join('')}</tbody></table>`;
+}
+
+// Signer's read-only view of what staff have filed but Area Managers have not validated yet
+async function renderAdminValidationQueue(el) {
+  el.innerHTML = '<p class="empty">Loading...</p>';
+  const { data, error } = await sb.from('pgds_documents').select('*')
+    .eq('status', 'for_validation')
+    .order('urgency', { ascending: false })
+    .order('created_at', { ascending: true });
+  if (error) return el.innerHTML = `<div class="msg error">${h(error.message)}</div>`;
+  const list = data || [];
+  window.__pgdsDocsCache = list;
+  // Which Area Manager covers each store?
+  const { data: ams } = await sb.from('pgds_profiles').select('id, full_name, email').eq('position', 'area_manager').eq('status', 'approved');
+  const amById = {}; (ams || []).forEach(a => { amById[a.id] = a.full_name || a.email; });
+  const amByStoreNum = {};
+  if ((ams || []).length) {
+    const [{ data: us }, { data: stores }] = await Promise.all([
+      sb.from('pgds_user_stores').select('user_id, store_id').in('user_id', Object.keys(amById)),
+      sb.from('pgds_stores').select('id, store_number')
+    ]);
+    const numById = {}; (stores || []).forEach(s => { numById[s.id] = s.store_number; });
+    (us || []).forEach(r => {
+      const num = numById[r.store_id];
+      if (!num) return;
+      (amByStoreNum[num] = amByStoreNum[num] || []).push(amById[r.user_id]);
+    });
+  }
+  el.innerHTML = `
+    <div class="privacy-note">
+      <span class="privacy-icon">🛡️</span>
+      <div><strong>Waiting for Area Manager validation.</strong> These documents have been filed by staff but are not yours to sign yet. They move into your Signing Queue once the Area Manager for that store validates them. You can view them and leave a remark here.</div>
+    </div>
+    ${list.length ? `<table><thead><tr>
+      <th>Document</th><th>Type</th><th>Uploader</th><th>Store</th><th>Area Manager</th><th>Urgency</th><th>Date &amp; time uploaded</th><th>Waiting</th><th>Remarks / Comments</th><th></th>
+    </tr></thead><tbody>
+      ${list.map(d => {
+        const ams = amByStoreNum[d.store_number] || [];
+        return `<tr>
+        <td><strong>${h(d.title)}</strong>${d.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${h(d.notes)}</div>` : ''}</td>
+        <td>${categoryChip(d.doc_category)}</td>
+        <td>${h(d.uploader_name || '-')}</td>
+        <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
+        <td>${ams.length ? ams.map(n => `<span class="store-chip">${h(n)}</span>`).join(' ') : '<span class="store-chip waiting">none assigned</span>'}</td>
+        <td><span class="badge ${d.urgency}">${d.urgency}</span></td>
+        <td>${fmtDateTime(d.created_at)}</td>
+        <td>${ageBadge(ageHours(d.created_at))}</td>
+        <td class="remarks-cell">${renderRemarksCell(d)}</td>
+        <td class="actions"><button class="secondary" onclick="viewAdminDoc('pgds-pending','${d.original_file_path}')">👁️ View</button></td>
+      </tr>`; }).join('')}
+    </tbody></table>` : '<p class="empty">📭 Nothing waiting for validation.</p>'}`;
 }
 
 function renderRemarksCell(d) {
@@ -2557,38 +2836,76 @@ async function renderApprovedFolders(el) {
     const { data: ps } = await sb.from('pgds_profiles').select('id,full_name,email,store_number,store_name').in('id', uids);
     (ps||[]).forEach(p => profMap[p.id] = p);
   }
-  // Group by store
+  // Group by store, then by category (Admin Docs / Store Ops Docs)
   const byStore = {};
   data.forEach(d => {
     const up = profMap[d.uploader_id] || {};
     const key = `${d.store_number || up.store_number || '?'} - ${d.store_name || up.store_name || 'Unassigned'}`;
-    (byStore[key] = byStore[key] || []).push({ d, up });
+    const cat = (d.doc_category === 'store_ops') ? 'store_ops' : 'admin';
+    byStore[key] = byStore[key] || { admin: [], store_ops: [] };
+    byStore[key][cat].push({ d, up });
   });
-  el.innerHTML = `<h3 style="margin-bottom:12px;color:var(--green-900);">📁 Approved documents by store</h3>` +
-    Object.entries(byStore).sort().map(([store, items], idx) => `
+  const rowsTable = items => `
+    <table><thead><tr><th>Title</th><th>Notes</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Validated</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
+      ${items.map(({d, up}) => `<tr>
+        <td><strong>${h(d.title)}</strong></td>
+        <td style="font-size:13px;color:#4b5563;max-width:260px;">${d.notes ? h(d.notes) : '<span style="color:var(--muted);">-</span>'}</td>
+        <td>${h(d.uploader_name || up.full_name || up.email || '-')}</td>
+        <td>${d.created_at ? fmtDateTime(d.created_at) : '-'}</td>
+        <td>${d.validated_at ? fmtDateTime(d.validated_at) + (d.validated_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.validated_name)}</div>` : '') : '-'}</td>
+        <td>${d.signed_at ? fmtDateTime(d.signed_at) : '-'}</td>
+        <td class="actions">
+          <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
+          <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
+          <button onclick="signDoc('${d.id}')">✏️ Edit</button>
+          <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>`;
+  el.innerHTML = `<div class="ann-toolbar">
+      <h3 style="margin:0;color:var(--green-900);">📁 Approved documents by store</h3>
+      <button class="secondary" onclick="cleanupApprovedOriginals()" title="Delete the pre-signature copies of approved documents">🧹 Free up space</button>
+    </div>` +
+    Object.entries(byStore).sort().map(([store, groups], idx) => {
+      const total = groups.admin.length + groups.store_ops.length;
+      return `
       <div class="folder-group ${idx===0?'open':''}">
         <div class="folder-head" onclick="this.parentElement.classList.toggle('open')">
           <span class="name">📂 ${h(store)}</span>
-          <span class="count">${items.length}</span>
+          <span class="count">${total}</span>
         </div>
         <div class="folder-body">
-          <table><thead><tr><th>Title</th><th>Notes</th><th>Uploaded by</th><th>Date &amp; time uploaded</th><th>Signed</th><th>Actions</th></tr></thead><tbody>
-            ${items.map(({d, up}) => `<tr>
-              <td><strong>${h(d.title)}</strong></td>
-              <td style="font-size:13px;color:#4b5563;max-width:260px;">${d.notes ? h(d.notes) : '<span style="color:var(--muted);">-</span>'}</td>
-              <td>${h(up.full_name || up.email || '-')}</td>
-              <td>${d.created_at ? fmtDateTime(d.created_at) : '-'}</td>
-              <td>${d.signed_at ? fmtDateTime(d.signed_at) : '-'}</td>
-              <td class="actions">
-                <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
-                <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
-                <button onclick="signDoc('${d.id}')">✏️ Edit</button>
-                <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
-              </td>
-            </tr>`).join('')}
-          </tbody></table>
+          ${[['admin', '🗂️ Admin Docs'], ['store_ops', '🏬 Store Ops Docs']].map(([cat, label], i) => groups[cat].length ? `
+            <div class="folder-group subfolder ${i===0?'open':''}">
+              <div class="folder-head" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+                <span class="name">${label}</span>
+                <span class="count">${groups[cat].length}</span>
+              </div>
+              <div class="folder-body">${rowsTable(groups[cat])}</div>
+            </div>` : '').join('')}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
+}
+
+// One-off cleanup: remove the pre-signature originals of documents already approved.
+// The signed copy is kept, so nothing visible to staff changes.
+async function cleanupApprovedOriginals() {
+  const { data, error } = await sb.from('pgds_documents')
+    .select('id, original_file_path')
+    .eq('status', 'approved')
+    .not('original_file_path', 'is', null);
+  if (error) return toast(error.message, 'error');
+  const paths = (data || []).map(d => d.original_file_path).filter(Boolean);
+  if (!paths.length) return toast('Nothing to clean up - no originals left.');
+  if (!confirm(`Free up space\n\nDelete ${paths.length} pre-signature original file(s)?\n\nThe signed copies stay exactly as they are. Files already deleted are skipped. This cannot be undone.`)) return;
+  let removed = 0;
+  for (let i = 0; i < paths.length; i += 50) {
+    const chunk = paths.slice(i, i + 50);
+    const { error: rmErr } = await sb.storage.from('pgds-pending').remove(chunk);
+    if (!rmErr) removed += chunk.length;
+  }
+  toast(`🧹 Cleaned up ${removed} original file(s)`);
 }
 
 async function deleteApprovedDoc(id, originalPath, signedPath) {
@@ -2855,6 +3172,8 @@ let sigState = { doc: null, pages: [], overlays: [], mySignatures: [], pdfBytes:
 async function signDoc(id) {
   const { data: docRow, error } = await sb.from('pgds_documents').select('*').eq('id', id).single();
   if (error) return alert(error.message);
+  if (docRow.status === 'for_validation') return toast('Waiting for Area Manager validation - it cannot be signed yet.', 'warn');
+  if (docRow.status === 'returned') return toast('This document was sent back to the uploader by the Area Manager.', 'warn');
   sigState = { doc: docRow, pages: [], pageWraps: [], overlays: [], mySignatures: [], pdfBytes: null, pageInfo: [], pageZoom: [] };
   const { data: sigs } = await sb.from('pgds_signatures').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
   sigState.mySignatures = sigs || [];
@@ -3693,6 +4012,10 @@ async function approveDoc() {
       signed_at: new Date().toISOString()
     }).eq('id', sigState.doc.id);
     if (upd.error) throw upd.error;
+    // The signed copy contains everything the original had, so drop the original to save space
+    if (sigState.doc.original_file_path) {
+      sb.storage.from('pgds-pending').remove([sigState.doc.original_file_path]).catch(() => {});
+    }
     closeSigningModal();
     renderAdminView(); updateAdminCounts();
     toast('Document approved and moved to the Approved folder.');
