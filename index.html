@@ -345,6 +345,24 @@
   .auto-cat { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--green-50); border: 1px solid #d1fadf; border-radius: 8px; padding: 8px 10px; }
   .auto-cat span { font-size: 12px; color: var(--muted); }
 
+  /* Archive */
+  .archived-chip { display: inline-flex; align-items: center; gap: 5px; background: #eef2f7; color: #475569;
+                   border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
+  .archived-where { font-size: 11px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+  .arch-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fffbeb;
+                 border: 1px solid #fcd34d; border-left: 4px solid var(--gold); border-radius: 10px;
+                 padding: 12px 14px; margin-bottom: 14px; }
+  .arch-banner .txt { font-size: 13px; color: #78350f; flex: 1; min-width: 220px; line-height: 1.5; }
+  .arch-list { max-height: 300px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; }
+  .arch-list label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px;
+                     border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; }
+  .arch-list label:last-child { border-bottom: 0; }
+  .arch-list label:hover { background: var(--green-50); }
+  .arch-list .meta { font-size: 11px; color: var(--muted); }
+  .arch-steps { font-size: 12px; color: var(--muted); line-height: 1.7; text-align: left;
+                background: #f9fafb; border-radius: 8px; padding: 10px 12px; }
+  .arch-progress { font-size: 13px; font-weight: 600; color: var(--green-900); margin: 10px 0; }
+
   /* Full-screen prompt (e.g. after creating an account) */
   .prompt-overlay { position: fixed; inset: 0; background: rgba(6,78,59,.55); z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .prompt-card { background: #fff; border-radius: 14px; padding: 26px 22px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
@@ -353,6 +371,9 @@
   .prompt-card p { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
   .prompt-card .prompt-main { font-size: 14px; font-weight: 700; color: var(--green-900); background: var(--green-50); border-radius: 8px; padding: 10px; }
   .prompt-card .prompt-sub { font-size: 12px; }
+  .prompt-card.wide { max-width: 720px; text-align: left; }
+  .prompt-card.wide h3 { text-align: center; }
+  .prompt-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
   .prompt-card button { margin-top: 6px; }
 
   /* Signing modal - bottom toolbar */
@@ -480,7 +501,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v16.2-compress';
+const APP_VERSION = 'v17.0-archive';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2401,7 +2422,9 @@ async function loadMyDocs() {
         ${d.status==='for_validation'?`<div style="font-size:11px;color:var(--muted);margin-top:4px;">${ageBadge(ageHours(d.created_at))} waiting</div>`:''}
       </td>
       <td class="actions">
-        ${d.status==='approved'&&d.signed_file_path?`<button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
+        ${d.archived_at?`<span class="archived-chip">📦 Archived</span>
+        <div class="archived-where">Backed up on ${fmtDateTime(d.archived_at)}. Ask the signer for a copy.</div>`:
+        d.status==='approved'&&d.signed_file_path?`<button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
         <button class="secondary" onclick="downloadFile('pgds-signed','${d.signed_file_path}')">👁️ View</button>`:
         `<button class="secondary" onclick="downloadFile('pgds-pending','${d.original_file_path}')">👁️ Preview</button>`}
         ${mine && d.status==='returned'?`<button onclick="resubmitDoc('${d.id}')">📨 Resubmit</button>`:''}
@@ -2576,7 +2599,7 @@ async function renderAdminView() {
 
 async function renderDashboard(el) {
   el.innerHTML = '<p class="empty">Loading dashboard...</p>';
-  const { data: docs } = await sb.from('pgds_documents').select('id,title,notes,status,created_at,signed_at,store_number,store_name,urgency,reject_reason');
+  const { data: docs } = await sb.from('pgds_documents').select('id,title,notes,status,created_at,signed_at,store_number,store_name,urgency,reject_reason,archived_at,signed_file_path');
   const all = docs || [];
   const pending = all.filter(d => d.status === 'pending');
   const approved = all.filter(d => d.status === 'approved');
@@ -2594,7 +2617,17 @@ async function renderDashboard(el) {
   const storeEntries = Object.entries(byStore).sort((a,b) => b[1]-a[1]).slice(0, 10);
   const maxCount = Math.max(1, ...storeEntries.map(e => e[1]));
 
+  // Approved documents old enough to archive - a nudge, never an automatic deletion
+  const cutoff = new Date(Date.now() - ARCHIVE_DAYS * 864e5);
+  const toArchive = approved.filter(d => !d.archived_at && d.signed_file_path && d.signed_at && new Date(d.signed_at) < cutoff).length;
+
   el.innerHTML = `
+    ${toArchive ? `<div class="arch-banner">
+      <span style="font-size:22px;">📦</span>
+      <div class="txt"><strong>${toArchive} approved document${toArchive > 1 ? 's are' : ' is'} older than ${ARCHIVE_DAYS} days.</strong>
+      Back ${toArchive > 1 ? 'them' : 'it'} up to a ZIP on your computer, then free the storage. Nothing is deleted until you confirm the download.</div>
+      <button onclick="adminView='approved-folders';renderAdmin();setTimeout(()=>openArchiveDialog(false),400);">Archive now</button>
+    </div>` : ''}
     <div class="kpi-row">
       <div class="kpi gold"><div class="label">Pending Now</div><div class="value">${pending.length}</div><div class="sub">${urgent} urgent/high</div></div>
       <div class="kpi" style="border-left-color:#8b5cf6;"><div class="label">With Area Managers</div><div class="value">${awaitingValidation}</div><div class="sub">Not yet validated</div></div>
@@ -2941,9 +2974,13 @@ async function renderApprovedFolders(el) {
         <td>${d.validated_at ? fmtDateTime(d.validated_at) + (d.validated_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.validated_name)}</div>` : '') : '-'}</td>
         <td>${d.signed_at ? fmtDateTime(d.signed_at) : '-'}</td>
         <td class="actions">
-          <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
-          <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
-          <button onclick="signDoc('${d.id}')">✏️ Edit</button>
+          ${d.archived_at ? `
+            <span class="archived-chip">📦 Archived</span>
+            <div class="archived-where">In: ${h(d.archive_name || 'archive')}.zip<br>${fmtDateTime(d.archived_at)}</div>`
+          : `
+            <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
+            <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
+            <button onclick="signDoc('${d.id}')">✏️ Edit</button>`}
           <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
         </td>
       </tr>`).join('')}
@@ -2951,6 +2988,7 @@ async function renderApprovedFolders(el) {
   el.innerHTML = `<div class="ann-toolbar">
       <h3 style="margin:0;color:var(--green-900);">📁 Approved documents by store</h3>
       <button class="secondary" onclick="cleanupApprovedOriginals()" title="Delete the pre-signature copies of approved documents">🧹 Free up space</button>
+      <button onclick="openArchiveDialog(false)" title="Back up older approved documents to a ZIP, then free their storage">📦 Archive &amp; free space</button>
     </div>` +
     Object.entries(byStore).sort().map(([store, groups], idx) => {
       const total = groups.admin.length + groups.store_ops.length;
@@ -2974,6 +3012,302 @@ async function renderApprovedFolders(el) {
     }).join('');
 }
 
+// ---------- ARCHIVE & FREE SPACE ----------
+// Approved documents older than ARCHIVE_DAYS are packed into a ZIP you download and keep,
+// and only then are their files removed from storage. The database row always stays,
+// so the record of every signed document survives forever.
+const ARCHIVE_DAYS = 90;
+const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+
+function archiveCutoffISO() { return new Date(Date.now() - ARCHIVE_DAYS * 864e5).toISOString(); }
+
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-src="' + src + '"]')) return resolve();
+    const el = document.createElement('script');
+    el.src = src; el.dataset.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error('Could not load the ZIP library. Check your internet connection.'));
+    document.head.appendChild(el);
+  });
+}
+
+// Documents that still have a file and have not been archived yet
+async function fetchArchivable(showAll) {
+  let q = sb.from('pgds_documents').select('*')
+    .eq('status', 'approved')
+    .is('archived_at', null)
+    .not('signed_file_path', 'is', null)
+    .order('signed_at', { ascending: true });
+  if (!showAll) q = q.lt('signed_at', archiveCutoffISO());
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+// How many are past the 90-day mark (used for the dashboard nudge)
+async function countOverdueArchive() {
+  const { count } = await sb.from('pgds_documents').select('*', { count: 'exact', head: true })
+    .eq('status', 'approved').is('archived_at', null)
+    .not('signed_file_path', 'is', null).lt('signed_at', archiveCutoffISO());
+  return count || 0;
+}
+
+let archiveState = { docs: [], showAll: false, running: false };
+
+async function openArchiveDialog(showAll) {
+  archiveState.showAll = !!showAll;
+  let docs = [];
+  try { docs = await fetchArchivable(archiveState.showAll); }
+  catch (err) {
+    if (/archived_at/.test(err.message || '')) return toast('Run sql/phase14_archive.sql in Supabase first.', 'error');
+    return toast(err.message, 'error');
+  }
+  archiveState.docs = docs;
+  const ov = document.createElement('div');
+  ov.className = 'prompt-overlay';
+  ov.id = 'archiveOverlay';
+  ov.innerHTML = `
+    <div class="prompt-card wide">
+      <div class="prompt-icon">\ud83d\udce6</div>
+      <h3>Archive &amp; free space</h3>
+      <div id="archBody">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+          ${archiveState.showAll
+            ? 'Every approved document that still has a file. Tick the ones to archive now.'
+            : `Approved documents signed more than <strong>${ARCHIVE_DAYS} days</strong> ago.`}
+        </p>
+        ${docs.length ? `
+          <div class="arch-list" id="archList">
+            ${docs.map(d => `
+              <label>
+                <input type="checkbox" value="${d.id}" checked>
+                <span>
+                  <strong>${h(d.title || 'Untitled')}</strong>
+                  <div class="meta">Store ${h(d.store_number || '-')} \u00b7 signed ${d.signed_at ? fmtDateTime(d.signed_at) : '-'}${d.signed_at ? ` \u00b7 ${Math.floor(ageHours(d.signed_at) / 24)} days ago` : ''}</div>
+                </span>
+              </label>`).join('')}
+          </div>
+          <div class="arch-steps">
+            <strong>What happens, in this order:</strong><br>
+            1. Every ticked document is packed into one ZIP, together with a spreadsheet of all its details.<br>
+            2. The ZIP downloads to this computer \u2014 save it somewhere safe, such as a OneDrive folder.<br>
+            3. You confirm the download worked. <strong>Nothing is deleted before you confirm.</strong><br>
+            4. Only then are the files removed from storage. The records stay in the app forever.
+          </div>`
+        : `<p class="empty">${archiveState.showAll ? 'Nothing left to archive - every approved document is already archived.' : `No approved document is older than ${ARCHIVE_DAYS} days yet.`}</p>`}
+      </div>
+      <div class="prompt-actions" id="archActions">
+        ${!archiveState.showAll ? `<button class="secondary" onclick="openArchiveDialog(true)">Show all approved documents</button>` : ''}
+        <button class="secondary" onclick="closeArchiveDialog()">Cancel</button>
+        ${docs.length ? `<button onclick="startArchive()">\ud83d\udce6 Build backup &amp; download</button>` : ''}
+      </div>
+    </div>`;
+  closeArchiveDialog();
+  document.body.appendChild(ov);
+}
+
+function closeArchiveDialog() {
+  if (archiveState.running) return;
+  const o = document.getElementById('archiveOverlay'); if (o) o.remove();
+}
+
+function csvCell(v) {
+  const t = v === null || v === undefined ? '' : String(v);
+  return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function fmtPlain(s) { return s ? new Date(s).toLocaleString() : ''; }
+
+async function startArchive() {
+  const boxes = Array.from(document.querySelectorAll('#archList input:checked')).map(b => b.value);
+  if (!boxes.length) return toast('Tick at least one document.', 'warn');
+  const docs = archiveState.docs.filter(d => boxes.includes(d.id));
+  const body = document.getElementById('archBody');
+  const actions = document.getElementById('archActions');
+  archiveState.running = true;
+  actions.innerHTML = '';
+  const say = t => { const el = document.getElementById('archProgress'); if (el) el.textContent = t; };
+  body.innerHTML = `<div class="arch-progress" id="archProgress">Starting...</div>`;
+
+  try {
+    say('Loading the ZIP library...');
+    await loadScriptOnce(JSZIP_URL);
+
+    // A unique name per archive, so every row can say which ZIP holds its file
+    const stamp = new Date();
+    const dateStr = `${stamp.getFullYear()}-${String(stamp.getMonth() + 1).padStart(2, '0')}-${String(stamp.getDate()).padStart(2, '0')}`;
+    let archiveName = `PG-Docs-Sign-Archive-${dateStr}`;
+    const { data: sameDay } = await sb.from('pgds_documents').select('archive_name').like('archive_name', archiveName + '%').limit(200);
+    const taken = new Set((sameDay || []).map(r => r.archive_name));
+    if (taken.has(archiveName)) {
+      let n = 2;
+      while (taken.has(`${archiveName}-${n}`)) n++;
+      archiveName = `${archiveName}-${n}`;
+    }
+
+    const zip = new JSZip();
+    const folder = zip.folder(archiveName);
+    const docsFolder = folder.folder('documents');
+    const usedNames = new Set();
+    const rows = [];
+    let packed = 0, failed = [];
+
+    for (const d of docs) {
+      say(`Packing ${packed + 1} of ${docs.length}: ${d.title || 'Untitled'}`);
+      // Build a filename that sorts by date and says where it came from
+      const dt = d.signed_at ? new Date(d.signed_at) : new Date(d.created_at);
+      const dstr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      let base = `${dstr}_Store-${(d.store_number || 'NA')}_${String(d.title || 'document').replace(/[^a-zA-Z0-9 _.-]/g, '').replace(/\s+/g, '-').slice(0, 60) || 'document'}`;
+      let fname = base + '.pdf', n = 2;
+      while (usedNames.has(fname)) { fname = `${base}-${n}.pdf`; n++; }
+      usedNames.add(fname);
+
+      try {
+        const { data: signed, error: se } = await sb.storage.from('pgds-signed').createSignedUrl(d.signed_file_path, 600);
+        if (se) throw se;
+        const resp = await fetch(signed.signedUrl);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        docsFolder.file(fname, await resp.arrayBuffer());
+        packed++;
+      } catch (err) {
+        failed.push({ d, why: err.message || String(err) });
+        continue;
+      }
+
+      rows.push({ d, fname });
+    }
+
+    if (!rows.length) throw new Error('Not a single file could be downloaded. Nothing was changed.');
+
+    // The spreadsheet: this is the part that has to outlive the PDFs
+    const header = ['Document title','Category','Store number','Store name','Uploaded by','Notes','Remarks by signer',
+                    'Date uploaded','Date validated','Validated by','Date signed','PDF file in this archive','Archive name'];
+    const csv = [header.join(',')].concat(rows.map(({ d, fname }) => [
+      d.title, DOC_CATEGORIES[d.doc_category] || 'Admin Docs', d.store_number, d.store_name, d.uploader_name,
+      d.notes, d.admin_remarks, fmtPlain(d.created_at), fmtPlain(d.validated_at), d.validated_name,
+      fmtPlain(d.signed_at), 'documents/' + fname, archiveName
+    ].map(csvCell).join(','))).join('\r\n');
+    folder.file('records.csv', '\ufeff' + csv);
+
+    folder.file('index.html', `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${archiveName}</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#111}h1{font-size:18px;color:#064e3b}
+p{font-size:13px;color:#555}table{border-collapse:collapse;width:100%;font-size:13px;margin-top:14px}
+th,td{border:1px solid #ddd;padding:7px 9px;text-align:left;vertical-align:top}
+th{background:#064e3b;color:#fff;font-size:11px;text-transform:uppercase}a{color:#0d5c2f}</style></head><body>
+<h1>PG Docs Sign - archived documents</h1>
+<p>${rows.length} signed document(s), archived on ${stamp.toLocaleString()}. Click a title to open the signed PDF.</p>
+<table><tr><th>Document</th><th>Store</th><th>Uploaded by</th><th>Notes</th><th>Uploaded</th><th>Validated</th><th>Signed</th></tr>
+${rows.map(({ d, fname }) => `<tr>
+<td><a href="documents/${encodeURIComponent(fname)}">${h(d.title || 'Untitled')}</a></td>
+<td>${h(d.store_number || '-')} ${h(d.store_name || '')}</td>
+<td>${h(d.uploader_name || '-')}</td>
+<td>${h(d.notes || '')}${d.admin_remarks ? '<br><em>Remark: ' + h(d.admin_remarks) + '</em>' : ''}</td>
+<td>${fmtPlain(d.created_at)}</td>
+<td>${fmtPlain(d.validated_at)}${d.validated_name ? '<br>' + h(d.validated_name) : ''}</td>
+<td>${fmtPlain(d.signed_at)}</td></tr>`).join('')}
+</table></body></html>`);
+
+    folder.file('README.txt',
+`PG Docs Sign - document archive
+${archiveName}
+Created: ${stamp.toLocaleString()}
+
+This folder holds ${rows.length} signed document(s) that were removed from the
+PG Docs Sign app to free storage space.
+
+  documents/     the signed PDFs, exactly as they were signed
+  records.csv    every detail of each document - opens in Excel
+  index.html     the same list as a readable page; open it in a browser
+
+The app still shows each of these documents on the Approved tab, marked as
+archived, with all of its dates, notes and remarks. Only the PDF file was
+removed from the app - this folder is the only copy of it, so keep it safe.
+
+Suggested: keep this folder in OneDrive so it is backed up automatically.
+`);
+
+    say('Building the ZIP file...');
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    const sizeMB = (blob.size / 1048576).toFixed(1);
+
+    say('Downloading...');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = archiveName + '.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+    // The safety gate: nothing is deleted until you say the file is really saved
+    body.innerHTML = `
+      <div class="msg success" style="margin-bottom:10px;">Downloaded <strong>${archiveName}.zip</strong> (${sizeMB} MB) - ${rows.length} document(s).</div>
+      ${failed.length ? `<div class="msg error" style="margin-bottom:10px;">${failed.length} file(s) could not be downloaded and were left untouched in the app.</div>` : ''}
+      <div class="arch-steps">
+        Open the ZIP and check it before continuing. Save it somewhere permanent - a OneDrive folder is ideal.<br><br>
+        <strong>Once you press "Yes, free the space", the ${rows.length} PDF file(s) are deleted from the app and this ZIP becomes the only copy.</strong>
+        The records stay on the Approved tab either way.
+      </div>`;
+    document.getElementById('archActions').innerHTML = `
+      <button class="secondary" onclick="abortArchive()">No - keep the files for now</button>
+      <button onclick='finishArchive(${JSON.stringify(rows.map(r => ({ id: r.d.id, path: r.d.signed_file_path })))}, ${JSON.stringify(archiveName)})'>Yes, free the space</button>`;
+  } catch (err) {
+    archiveState.running = false;
+    body.innerHTML = `<div class="msg error">${h(err.message || String(err))}</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Nothing was deleted.</p>`;
+    document.getElementById('archActions').innerHTML = `<button class="secondary" onclick="closeArchiveDialog()">Close</button>`;
+  }
+}
+
+function abortArchive() {
+  archiveState.running = false;
+  closeArchiveDialog();
+  toast('Kept every file. Your backup is still in your Downloads.');
+}
+
+// Delete the files, then stamp the rows. Only rows whose file really went are stamped.
+async function finishArchive(items, archiveName) {
+  const body = document.getElementById('archBody');
+  document.getElementById('archActions').innerHTML = '';
+  body.innerHTML = `<div class="arch-progress" id="archProgress">Removing files...</div>`;
+  const say = t => { const el = document.getElementById('archProgress'); if (el) el.textContent = t; };
+  let freed = 0, blocked = 0;
+  try {
+    for (let i = 0; i < items.length; i += 20) {
+      const chunk = items.slice(i, i + 20);
+      say(`Removing files ${i + 1}-${Math.min(i + 20, items.length)} of ${items.length}...`);
+      const { data: removed, error } = await sb.storage.from('pgds-signed').remove(chunk.map(c => c.path));
+      // Under RLS a blocked delete comes back as success with nothing removed - check the list
+      const gone = new Set((removed || []).map(r => r.name));
+      const okIds = chunk.filter(c => gone.has(c.path)).map(c => c.id);
+      blocked += chunk.length - okIds.length;
+      if (error) throw error;
+      if (okIds.length) {
+        const { error: uErr } = await sb.from('pgds_documents')
+          .update({ archived_at: new Date().toISOString(), archive_name: archiveName, signed_file_path: null })
+          .in('id', okIds);
+        if (uErr) throw uErr;
+        freed += okIds.length;
+      }
+    }
+    closeArchiveDialogForce();
+    if (blocked && !freed) {
+      toast('No file could be deleted - storage is blocking it. Run sql/phase14_archive.sql.', 'error');
+    } else {
+      toast(`\ud83d\udce6 Archived ${freed} document(s)${blocked ? `, ${blocked} could not be deleted` : ''}. Records kept.`);
+    }
+    renderAdminView(); updateAdminCounts();
+  } catch (err) {
+    archiveState.running = false;
+    body.innerHTML = `<div class="msg error">${h(err.message || String(err))}</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">${freed} document(s) were archived before this happened. Your ZIP still holds every one of them.</p>`;
+    document.getElementById('archActions').innerHTML = `<button class="secondary" onclick="closeArchiveDialogForce()">Close</button>`;
+  }
+}
+
+function closeArchiveDialogForce() {
+  archiveState.running = false;
+  const o = document.getElementById('archiveOverlay'); if (o) o.remove();
+}
+
 // One-off cleanup: remove the pre-signature originals of documents already approved.
 // The signed copy is kept, so nothing visible to staff changes.
 async function cleanupApprovedOriginals() {
@@ -2992,9 +3326,12 @@ async function cleanupApprovedOriginals() {
   let removed = 0;
   for (let i = 0; i < paths.length; i += 50) {
     const chunk = paths.slice(i, i + 50);
-    const { error: rmErr } = await sb.storage.from('pgds-pending').remove(chunk);
-    if (!rmErr) removed += chunk.length;
+    const { data: gone, error: rmErr } = await sb.storage.from('pgds-pending').remove(chunk);
+    if (rmErr) continue;
+    // A blocked delete comes back as success with nothing removed - count what really went
+    removed += (gone || []).length;
   }
+  if (!removed) return toast('Nothing could be deleted - storage is blocking it. Run sql/phase14_archive.sql.', 'error');
   toast(`🧹 Cleaned up ${removed} original file(s)`);
 }
 
