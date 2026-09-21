@@ -529,7 +529,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v19.1-dlrevert';
+const APP_VERSION = 'v19.2-dlfinal';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2791,62 +2791,47 @@ function safeFileName(title, suffix = 'signed') {
   return `${base} - ${suffix}.pdf`;
 }
 
-// Download straight to the device's Downloads folder (phone or PC)
+// Download straight to the device's Downloads folder (phone or PC).
+//
+// The file is NOT fetched into memory first. Pulling a 1MB PDF down as a blob
+// takes longer than the browser's "this tap authorised a download" window, so the
+// first download was allowed and every one after it was silently blocked as an
+// automatic download - with no address bar in the installed app to say so.
+//
+// Instead we hand the browser the signed URL, which already carries
+// Content-Disposition: attachment. The browser downloads it itself, stays on the
+// page, and treats each tap as a fresh, legitimate download. Same behaviour for
+// every user and every device.
 async function downloadDirect(bucket, path, filename) {
   if (!path || path === 'null' || path === 'undefined') {
     return toast('This document has no file any more - it was archived or cleaned up.', 'error');
   }
+  const name = filename || 'document.pdf';
   toast('Preparing download...');
-  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300, { download: filename });
+  // createSignedUrl fails outright for a missing object, so a bad file is caught
+  // here rather than downloading an XML error page.
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 300, { download: name });
   if (error) {
     console.error('createSignedUrl failed:', bucket, path, error);
     return toast(/not found/i.test(error.message || '')
       ? 'That file is no longer in storage (archived or cleaned up).'
       : 'Could not prepare the download: ' + error.message, 'error');
   }
-  let blob;
   try {
-    const resp = await fetch(data.signedUrl);
-    if (!resp.ok) {
-      // A signed URL for a missing object answers 400/404 with an XML error body.
-      // Redirecting to it would just show that XML, so say what happened instead.
-      console.error('download fetch failed:', resp.status, bucket, path);
-      return toast(resp.status === 404 || resp.status === 400
-        ? 'That file is no longer in storage (archived or cleaned up).'
-        : 'Download failed (HTTP ' + resp.status + ').', 'error');
-    }
-    blob = await resp.blob();
-  } catch (e) {
-    // Only a network/CORS problem reaches here - the signed URL already carries
-    // Content-Disposition, so letting the browser fetch it directly is worth a try.
-    console.error('download network error:', e);
-    toast('Opening the file directly...', 'warn');
-    window.open(data.signedUrl, '_blank');
-    return;
-  }
-  await saveBlobToDevice(blob, filename || 'document.pdf', data.signedUrl);
-}
-
-// The plain anchor download works on this phone and on the PC, so it stays the
-// one and only path. (A share-sheet version was tried and made things worse:
-// navigator.share needs a fresh tap, and the file fetch uses that tap up.)
-async function saveBlobToDevice(blob, filename, signedUrl) {
-  try {
-    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
+    a.href = data.signedUrl;
+    a.download = name;          // honoured same-origin; the header covers the rest
+    a.rel = 'noopener';
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 3000);
-    downloadedBanner(filename);
-    toast('⬇️ Downloaded: ' + filename, 'success', 7000);
+    setTimeout(() => a.remove(), 2000);
   } catch (e) {
-    console.error('save failed:', e);
-    if (signedUrl) { window.open(signedUrl, '_blank'); return toast('Opening the file in a new tab.', 'warn', 6000); }
-    toast('Could not save the file: ' + (e.message || e), 'error');
+    console.error('download click failed:', e);
+    window.location.href = data.signedUrl;
   }
+  downloadedBanner(name);
+  toast('⬇️ Downloading: ' + name, 'success', 7000);
 }
 
 // A toast can be missed on a phone - the browser's own download popup appears at
