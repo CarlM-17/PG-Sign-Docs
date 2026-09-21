@@ -365,14 +365,6 @@
                border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
   .hold-note .txt { font-size: 13px; color: #4c1d95; line-height: 1.55; }
 
-  /* Download confirmation that survives the browser's own download popup */
-  .dl-banner { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; z-index: 3100;
-               display: flex; align-items: center; gap: 12px; background: var(--green-900); color: #fff;
-               border: 1px solid var(--gold); border-radius: 12px; padding: 12px 14px; font-size: 13px;
-               box-shadow: 0 8px 24px rgba(0,0,0,.35); max-width: 92vw; }
-  .dl-banner button { background: transparent; border: 0; color: #fff; font-size: 20px; line-height: 1;
-                      cursor: pointer; padding: 0 4px; }
-
   /* Archive */
   .archived-chip { display: inline-flex; align-items: center; gap: 5px; background: #eef2f7; color: #475569;
                    border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
@@ -529,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v19.2-dlfinal';
+const APP_VERSION = 'v19.4-holdvis';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1582,7 +1574,8 @@ async function renderHoldPane() {
           ${amCan ? `<button onclick="revalidateDoc('${d.id}')">✅ Re-Validate</button>` : ''}
         </td>
       </tr>`).join('')}
-    </tbody></table>` : '<p class="empty">👍 Nothing is on hold right now.</p>'}`;
+    </tbody></table>` : `<p class="empty">👍 Nothing is on hold for your store${(currentUser.stores || []).length > 1 ? 's' : ''} right now.<br>
+       <span style="font-size:12px;">If the signer has held a document and you cannot see it here, ask the signer to run <strong>phase16</strong> in Supabase.</span></p>`}`;
 }
 
 function setHoldBadge(n) {
@@ -2817,33 +2810,11 @@ async function downloadDirect(bucket, path, filename) {
       ? 'That file is no longer in storage (archived or cleaned up).'
       : 'Could not prepare the download: ' + error.message, 'error');
   }
-  try {
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = name;          // honoured same-origin; the header covers the rest
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => a.remove(), 2000);
-  } catch (e) {
-    console.error('download click failed:', e);
-    window.location.href = data.signedUrl;
-  }
-  downloadedBanner(name);
-  toast('⬇️ Downloading: ' + name, 'success', 7000);
-}
-
-// A toast can be missed on a phone - the browser's own download popup appears at
-// the same moment and takes your eye. This bar stays until it is dismissed.
-function downloadedBanner(filename) {
-  document.querySelectorAll('.dl-banner').forEach(e => e.remove());
-  const el = document.createElement('div');
-  el.className = 'dl-banner';
-  el.innerHTML = `<span>⬇️ Downloaded <strong>${h(filename)}</strong> - check your Downloads folder.</span>
-    <button onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>`;
-  document.body.appendChild(el);
-  setTimeout(() => { if (el.isConnected) el.remove(); }, 20000);
+  // A plain navigation, not a synthetic click: this hands the file to the phone's
+  // own download manager, which is what produces the system notification and the
+  // "Open" prompt when it finishes. The attachment header keeps us on this page.
+  toast('⬇️ Downloading: ' + name, 'success', 5000);
+  window.location.href = data.signedUrl;
 }
 
 // In-app PDF/image viewer modal (never leaves the PWA)
