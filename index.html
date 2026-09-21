@@ -365,6 +365,14 @@
                border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
   .hold-note .txt { font-size: 13px; color: #4c1d95; line-height: 1.55; }
 
+  /* Download confirmation that survives the browser's own download popup */
+  .dl-banner { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; z-index: 3100;
+               display: flex; align-items: center; gap: 12px; background: var(--green-900); color: #fff;
+               border: 1px solid var(--gold); border-radius: 12px; padding: 12px 14px; font-size: 13px;
+               box-shadow: 0 8px 24px rgba(0,0,0,.35); max-width: 92vw; }
+  .dl-banner button { background: transparent; border: 0; color: #fff; font-size: 20px; line-height: 1;
+                      cursor: pointer; padding: 0 4px; }
+
   /* Archive */
   .archived-chip { display: inline-flex; align-items: center; gap: 5px; background: #eef2f7; color: #475569;
                    border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
@@ -521,7 +529,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v19.0-mobiledl';
+const APP_VERSION = 'v19.1-dlrevert';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -2819,34 +2827,10 @@ async function downloadDirect(bucket, path, filename) {
   await saveBlobToDevice(blob, filename || 'document.pdf', data.signedUrl);
 }
 
-const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-// Getting a file onto a device is genuinely different on a phone.
-// On a PC an <a download> works. Inside an installed PWA on Android, and on iOS
-// generally, that same anchor is ignored and the file silently never arrives -
-// so phones get the share sheet (Save to Files / Drive) or a plain tab instead.
+// The plain anchor download works on this phone and on the PC, so it stays the
+// one and only path. (A share-sheet version was tried and made things worse:
+// navigator.share needs a fresh tap, and the file fetch uses that tap up.)
 async function saveBlobToDevice(blob, filename, signedUrl) {
-  if (IS_MOBILE) {
-    try {
-      const file = new File([blob], filename, { type: blob.type || 'application/pdf' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
-        toast('⬇️ Saved: ' + filename, 'success', 6000);
-        return;
-      }
-    } catch (e) {
-      // The person closed the share sheet - that is a choice, not a failure
-      if (e && e.name === 'AbortError') return toast('Download cancelled.', 'warn');
-      console.warn('share failed, falling back to a browser tab:', e);
-    }
-    // The signed URL already carries Content-Disposition: attachment, so the
-    // browser itself will download it - which phones handle reliably.
-    if (signedUrl) {
-      window.open(signedUrl, '_blank');
-      toast('Opening the file - tap the download icon to save it.', 'success', 8000);
-      return;
-    }
-  }
   try {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2856,12 +2840,25 @@ async function saveBlobToDevice(blob, filename, signedUrl) {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 3000);
+    downloadedBanner(filename);
     toast('⬇️ Downloaded: ' + filename, 'success', 7000);
   } catch (e) {
     console.error('save failed:', e);
     if (signedUrl) { window.open(signedUrl, '_blank'); return toast('Opening the file in a new tab.', 'warn', 6000); }
     toast('Could not save the file: ' + (e.message || e), 'error');
   }
+}
+
+// A toast can be missed on a phone - the browser's own download popup appears at
+// the same moment and takes your eye. This bar stays until it is dismissed.
+function downloadedBanner(filename) {
+  document.querySelectorAll('.dl-banner').forEach(e => e.remove());
+  const el = document.createElement('div');
+  el.className = 'dl-banner';
+  el.innerHTML = `<span>⬇️ Downloaded <strong>${h(filename)}</strong> - check your Downloads folder.</span>
+    <button onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>`;
+  document.body.appendChild(el);
+  setTimeout(() => { if (el.isConnected) el.remove(); }, 20000);
 }
 
 // In-app PDF/image viewer modal (never leaves the PWA)
