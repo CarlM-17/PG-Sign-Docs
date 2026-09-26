@@ -365,6 +365,9 @@
                border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
   .hold-note .txt { font-size: 13px; color: #4c1d95; line-height: 1.55; }
 
+  .pane-bar { display: flex; justify-content: flex-end; margin: 0 0 10px; }
+  .pane-bar button { font-size: 12px; padding: 6px 12px; }
+
   /* Archive */
   .archived-chip { display: inline-flex; align-items: center; gap: 5px; background: #eef2f7; color: #475569;
                    border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
@@ -521,7 +524,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v19.4-holdvis';
+const APP_VERSION = 'v20.0-nopoll';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -596,7 +599,7 @@ function ageBadge(hours) {
 // ---------- ROUTER ----------
 async function route() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { stopLive(); authMode = 'login'; return renderAuth(); }
+  if (!session) { authMode = 'login'; return renderAuth(); }
   const { data: profile } = await sb.from('pgds_profiles').select('*').eq('id', session.user.id).single();
   if (!profile) { await sb.auth.signOut(); return renderAuth(); }
   if (profile.status !== 'approved') {
@@ -608,7 +611,6 @@ async function route() {
   // Load every store this user is allowed to upload for
   currentUser.stores = await loadMyStores(session.user.id, profile);
   if (profile.role === 'admin') renderAdmin(); else { renderStaff(); showTodoReminder(); showMessageReminder(); }
-  startLive();
 }
 
 async function loadMyStores(userId, profile) {
@@ -2335,6 +2337,7 @@ async function renderStaff() {
     ${headerHTML(titles[staffView] || 'Dashboard')}
     <div class="container">
       ${staffTabsHTML()}
+      <div class="pane-bar"><button class="secondary" onclick="refreshPane(this)">\U0001f504 Refresh</button></div>
       <div id="staffPane"><p class="empty">Loading...</p></div>
     </div>`;
   document.querySelectorAll('.tab[data-sv]').forEach(t => t.onclick = () => { staffView = t.dataset.sv; msgOpenPostId = null; renderStaff(); });
@@ -2905,6 +2908,7 @@ async function renderAdmin() {
         <div class="tab ${adminView==='signatures'?'active':''}" data-v="signatures">My Signatures</div>
         <div class="tab ${adminView==='guide'?'active':''}" data-v="guide">📖 Admin Staff Store Ops Guide</div>
       </div>
+      <div class="pane-bar"><button class="secondary" onclick="refreshPane(this)">\U0001f504 Refresh</button></div>
       <div id="msg"></div>
       <div id="content"></div>
     </div>`;
@@ -4881,69 +4885,37 @@ function closeSigningModal() {
 async function logout() {
   try { sessionStorage.removeItem('pgds_todo_reminded'); sessionStorage.removeItem('pgds_msg_reminded'); } catch (e) {}
   document.querySelectorAll('.reminder-stack, .todo-reminder').forEach(e => e.remove());
-  stopLive();
   await sb.auth.signOut(); currentUser = null; staffView = 'dashboard'; msgOpenPostId = null; annOpenPostId = null; route();
 }
 function refreshApp() { window.location.reload(); }
 
-// ---------- LIVE UPDATES ----------
-// The lists keep themselves current, so a new document appears without reloading the page.
-// A light query (id + status only) every 20s; the screen is redrawn only when something
-// actually changed, and never while you are signing, viewing a file or filling a form.
-const LIVE_EVERY_MS = 20000;
-let liveTimer = null, liveSig = null, liveBusy = false;
+// No background polling. Every open session used to query the database every 20
+// seconds, which was a steady drain on the plan's egress and log quota for very
+// little benefit. Lists refresh when you open or switch a tab, and the Refresh
+// button below reloads whatever you are looking at.
 
-function liveCanRefresh() {
-  if (!currentUser) return false;
-  if (document.hidden) return false;
-  if (document.querySelector('.modal')) return false;          // signing or viewing a document
-  if (document.querySelector('.prompt-overlay')) return false;
-  const a = document.activeElement;
-  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return false;  // someone is typing
-  return true;
-}
-
-async function liveCheck() {
-  if (liveBusy || !liveCanRefresh()) return;
-  liveBusy = true;
+// Refresh just the list on screen - much lighter than reloading the whole app
+async function refreshPane(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
   try {
-    const { data, error } = await sb.from('pgds_documents').select('id,status');
-    if (error) return;
-    const sig = (data || []).map(d => d.id + ':' + d.status).sort().join('|');
-    const first = liveSig === null;
-    if (sig === liveSig) return;
-    liveSig = sig;
-    if (!first) liveRefreshView();
-  } catch (e) { /* offline or a hiccup - try again on the next tick */ }
-  finally { liveBusy = false; }
-}
-
-function liveRefreshView() {
-  if (currentUser.role === 'admin') {
-    updateAdminCounts();
-    if (document.getElementById('content') && ['dashboard','documents','validation','on-hold','approved-folders','rejected'].includes(adminView)) renderAdminView();
-  } else {
-    updateValidationCount();
-    updateHoldCount();
-    if (!document.getElementById('staffPane')) return;
-    if (staffView === 'status') { loadMyDocs(); updateStatusCounts(); }
-    else if (staffView === 'hold') renderHoldPane();
-    else if (staffView === 'validate') renderValidationPane();
-    else if (staffView === 'dashboard') renderStaffDashboard();
+    if (currentUser && currentUser.role === 'admin') {
+      await renderAdminView();
+      updateAdminCounts();
+    } else {
+      updateValidationCount();
+      updateHoldCount();
+      if (staffView === 'status') { await loadMyDocs(); updateStatusCounts(); }
+      else if (staffView === 'hold') await renderHoldPane();
+      else if (staffView === 'validate') await renderValidationPane();
+      else if (staffView === 'dashboard') await renderStaffDashboard();
+      else await renderStaff();
+    }
+    toast('\u2713 Up to date');
+  } catch (e) {
+    console.error('refresh failed:', e);
+    toast('Could not refresh: ' + (e.message || e), 'error');
   }
-  toast('Updated - new document activity', 'info');
 }
-
-function startLive() {
-  stopLive();
-  liveCheck();
-  liveTimer = setInterval(liveCheck, LIVE_EVERY_MS);
-}
-function stopLive() { if (liveTimer) clearInterval(liveTimer); liveTimer = null; liveSig = null; }
-
-// Coming back to the app should feel instant, not wait for the next tick
-document.addEventListener('visibilitychange', () => { if (!document.hidden) liveCheck(); });
-window.addEventListener('focus', () => liveCheck());
 
 // Auto-wrap every table in a horizontal-scroll container so mobile users can pan across columns
 function wrapAllTables() {
