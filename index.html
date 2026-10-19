@@ -521,7 +521,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 const SUPABASE_URL = 'https://icljtvutpjhxlnygxqbg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbGp0dnV0cGpoeGxueWd4cWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODUxNzEsImV4cCI6MjEwMjI2MTE3MX0.c4VKSusY-sukSEzy6mD_lDnyXpad30idGjo5yohvWng';
 const MAX_FILE_MB = 5;
-const APP_VERSION = 'v20.1-nopoll';
+const APP_VERSION = 'v21.0-holdapproved';
 
 // Keep the active tab visible in horizontally scrolling tab bars (they reset on re-render)
 function centerActiveTabs() {
@@ -1565,12 +1565,15 @@ async function renderHoldPane() {
         <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
         <td>${h(d.uploader_name || '-')}</td>
         <td style="max-width:260px;"><div class="hold-why">${h(d.hold_reason || 'No reason recorded')}
-          <span class="who">${h(d.held_name || 'Signer')} · ${d.held_at ? fmtDateTime(d.held_at) : ''}</span></div></td>
+          <span class="who">${h(d.held_name || 'Signer')} · ${d.held_at ? fmtDateTime(d.held_at) : ''}</span></div>
+          ${d.hold_prev_status === 'approved' ? `<div style="font-size:11px;color:#6d28d9;margin-top:5px;">✓ Already signed${d.signed_at ? ' on ' + fmtDateTime(d.signed_at) : ''} - held for explanation</div>` : ''}</td>
         <td style="min-width:240px;">${threadHTML(d.id, { kinds: ['explanation','validation'], empty: 'No explanation yet - add one below.' })}
           <button class="secondary" style="margin-top:8px;" onclick="openNoteDialog('${d.id}','explanation','Add explanation','Explain or justify this document. The signer sees your name and position with it.','e.g. This purchase was discussed with the Area Manager on 12 Sept; the supplier quote is attached on page 2.')">💬 Add explanation</button></td>
         <td class="actions">
           ${d.original_file_path ? `<button class="secondary" onclick="openInAppViewer('${d.signed_file_path ? 'pgds-signed' : 'pgds-pending'}','${d.signed_file_path || d.original_file_path}')">👁️ View</button>` : ''}
-          ${amCan ? `<button onclick="revalidateDoc('${d.id}')">✅ Re-Validate</button>` : ''}
+          ${amCan ? (d.hold_prev_status === 'approved'
+            ? `<div style="font-size:11px;color:var(--muted);max-width:170px;">Already signed - the Regional Manager lifts this hold once your explanation is in.</div>`
+            : `<button onclick="revalidateDoc('${d.id}')">✅ Re-Validate</button>`) : ''}
         </td>
       </tr>`).join('')}
     </tbody></table>` : `<p class="empty">👍 Nothing is on hold for your store${(currentUser.stores || []).length > 1 ? 's' : ''} right now.<br>
@@ -1605,7 +1608,7 @@ async function revalidateDoc(id) {
 }
 
 // Signer puts a document on hold - a remark is required
-function openHoldDialog(docId) {
+function openHoldDialog(docId, from) {
   closePopover();
   const back = document.createElement('div'); back.className = 'popover-back'; back.onclick = closePopover;
   const pop = document.createElement('div'); pop.className = 'popover';
@@ -1613,23 +1616,27 @@ function openHoldDialog(docId) {
     <button class="popover-close" onclick="closePopover()">&times;</button>
     <h4>⏸️ Put this document on hold</h4>
     <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">
-      Say what is missing or unclear. The uploader and the Area Manager both see this and can reply with a justification.
-      A reason is required.</p>
+      Say what is missing or unclear. The Store Manager, the Staff who filed it and the Area Manager all see this
+      and can reply with a justification. A reason is required.</p>
+    ${from === 'approved' ? `<p style="font-size:12px;color:#6d28d9;background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+      This document is already signed. Holding it takes it out of the <strong>Approved</strong> folder until you are
+      satisfied with the explanation - then you release it and it returns to Approved. The signed file is not changed.</p>` : ''}
     <textarea id="holdText" style="min-height:120px;font-size:14px;" placeholder="e.g. This was never discussed with me. Explain why the repair is needed and why this supplier."></textarea>
     <div style="display:flex;gap:8px;margin-top:10px;">
-      <button onclick="holdDoc('${docId}')">⏸️ Put on hold</button>
+      <button onclick="holdDoc('${docId}','${from || 'pending'}')">⏸️ Put on hold</button>
       <button class="secondary" onclick="closePopover()">Cancel</button>
     </div>`;
   document.body.appendChild(back); document.body.appendChild(pop);
   setTimeout(() => { const t = document.getElementById('holdText'); if (t) t.focus(); }, 50);
 }
 
-async function holdDoc(docId) {
+async function holdDoc(docId, from) {
   const reason = (document.getElementById('holdText').value || '').trim();
   if (!reason) return toast('A reason is required to put a document on hold.', 'warn');
   const now = new Date().toISOString();
   const { data: updated, error } = await sb.from('pgds_documents').update({
-    status: 'on_hold', hold_reason: reason, held_by: currentUser.id, held_name: niceName(), held_at: now
+    status: 'on_hold', hold_reason: reason, held_by: currentUser.id, held_name: niceName(), held_at: now,
+    hold_prev_status: from === 'approved' ? 'approved' : 'pending'
   }).eq('id', docId).select('id');
   if (error) return toast(error.message, 'error');
   if (!updated || !updated.length) return toast('Could not put it on hold.', 'error');
@@ -1639,17 +1646,23 @@ async function holdDoc(docId) {
     author_position: 'regional_manager', kind: 'hold', body: reason
   });
   closePopover();
-  toast('⏸️ On hold - the store and Area Manager have been asked to explain');
+  toast(from === 'approved'
+    ? '⏸️ On hold - taken out of Approved until this is explained'
+    : '⏸️ On hold - the store and Area Manager have been asked to explain');
   renderAdminView(); updateAdminCounts();
 }
 
-// Signer releases a hold without waiting for the Area Manager
-async function releaseHold(docId) {
-  if (!confirm('Release this hold and put the document back in your signing queue?')) return;
-  const { data: updated, error } = await sb.from('pgds_documents').update({ status: 'pending' }).eq('id', docId).select('id');
+// Signer releases a hold. The document goes back where it came from: one that was
+// already signed returns to Approved, one from the queue returns to the queue.
+async function releaseHold(docId, prev) {
+  const back = prev === 'approved' ? 'approved' : 'pending';
+  if (!confirm(back === 'approved'
+    ? 'Release this hold?\n\nThe document goes back to the Approved folder, exactly as it was signed.'
+    : 'Release this hold and put the document back in your signing queue?')) return;
+  const { data: updated, error } = await sb.from('pgds_documents').update({ status: back }).eq('id', docId).select('id');
   if (error) return toast(error.message, 'error');
   if (!updated || !updated.length) return toast('Could not release the hold.', 'error');
-  toast('▶️ Back in the signing queue');
+  toast(back === 'approved' ? '▶️ Back in the Approved folder' : '▶️ Back in the signing queue');
   renderAdminView(); updateAdminCounts();
 }
 
@@ -3193,12 +3206,13 @@ async function renderAdminHoldQueue(el) {
         <td>${h(d.store_number || '-')}${d.store_name ? `<div style="font-size:11px;color:var(--muted);">${h(d.store_name)}</div>` : ''}</td>
         <td>${h(d.uploader_name || '-')}</td>
         <td>${d.held_at ? fmtDateTime(d.held_at) : '-'}<div style="margin-top:4px;">${ageBadge(ageHours(d.held_at || d.created_at))}</div></td>
-        <td style="max-width:240px;"><div class="hold-why">${h(d.hold_reason || '-')}</div></td>
+        <td style="max-width:240px;"><div class="hold-why">${h(d.hold_reason || '-')}</div>
+          ${d.hold_prev_status === 'approved' ? `<div style="font-size:11px;color:#6d28d9;margin-top:5px;">✓ Held after signing - releasing returns it to Approved</div>` : ''}</td>
         <td style="min-width:240px;">${replies.length ? threadHTML(d.id, { kinds: ['explanation','validation'] }) : '<p class="thread-empty">Nobody has explained yet.</p>'}
           <button class="secondary" style="margin-top:8px;" onclick="openNoteDialog('${d.id}','explanation','Add a note','Ask a follow-up question or record your own note. Everyone who can see this document will read it.','e.g. Still unclear why this supplier was chosen.')">💬 Reply</button></td>
         <td class="actions">
           ${d.original_file_path ? `<button class="secondary" onclick="viewAdminDoc('${d.signed_file_path ? 'pgds-signed' : 'pgds-pending'}','${d.signed_file_path || d.original_file_path}')">👁️ View</button>` : ''}
-          <button onclick="releaseHold('${d.id}')" title="Put it back in your signing queue now">▶️ Release hold</button>
+          <button onclick="releaseHold('${d.id}','${d.hold_prev_status || 'pending'}')" title="${d.hold_prev_status === 'approved' ? 'Put it back in the Approved folder' : 'Put it back in your signing queue now'}">▶️ ${d.hold_prev_status === 'approved' ? 'Return to Approved' : 'Release hold'}</button>
           <button class="danger" onclick="rejectDoc('${d.id}')">Reject</button>
         </td>
       </tr>`; }).join('')}
@@ -3372,7 +3386,8 @@ async function renderApprovedFolders(el) {
           : `
             <button onclick="downloadDirect('pgds-signed','${d.signed_file_path}','${h(safeFileName(d.title)).replace(/'/g,"\\'")}')">⬇️ Download</button>
             <button class="secondary" onclick="viewAdminDoc('pgds-signed','${d.signed_file_path}')">👁️ View</button>
-            <button onclick="signDoc('${d.id}')">✏️ Edit</button>`}
+            <button onclick="signDoc('${d.id}')">✏️ Edit</button>
+            <button class="secondary" onclick="openHoldDialog('${d.id}','approved')" title="Pull this back for an explanation">⏸️ Hold</button>`}
           <button class="danger" onclick="deleteApprovedDoc('${d.id}','${d.original_file_path}','${d.signed_file_path}')">🗑 Delete</button>
         </td>
       </tr>`).join('')}
